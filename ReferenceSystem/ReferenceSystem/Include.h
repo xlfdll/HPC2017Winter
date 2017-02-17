@@ -1,3 +1,9 @@
+// CBIR System (Color Histogram based)
+// CSS 535 Project - Winter 2017
+// Max Strange, Jeremy Albert, Longfei Xi
+//
+// Include.h - common and library include directives
+
 #ifndef INCLUDE_H
 #define INCLUDE_H
 

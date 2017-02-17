@@ -1,10 +1,17 @@
-#include "Common.h"
+// CBIR System (Color Histogram based)
+// CSS 535 Project - Winter 2017
+// Max Strange, Jeremy Albert, Longfei Xi
+//
+// CmdLine.cpp - command line handling functions (definition)
+
+#include "CmdLine.h"
 
 void ShowHelp()
 {
 	cout
 		<< "Color Histogram CBIR System" << endl
 		<< "CSS 535 Project - Winter 2017" << endl
+		<< "Max Strange, Jeremy Albert, Longfei Xi"
 		<< endl
 		<< "Usage:" << endl
 		<< "CBIRSystem -u | <reference image filename>" << endl
