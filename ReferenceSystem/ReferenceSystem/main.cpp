@@ -1,11 +1,4 @@
-#define cimg_display 0
-
-#include <Windows.h>
-
-#include "CImg.h"
-
-using namespace std;
-using namespace cimg_library;
+#include "Common.h"
 
 int main(int argc, char *argv[])
 {
@@ -16,10 +9,10 @@ int main(int argc, char *argv[])
 
 	if (argc < 1)
 	{
-		
+		ShowHelp();
 	}
 	else
 	{
-		
+		HandleArguments(argv[1]);
 	}
 }

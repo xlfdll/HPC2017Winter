@@ -147,8 +147,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="CImg.h" />
+    <ClInclude Include="Common.h" />
+    <ClInclude Include="Include.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Common.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
