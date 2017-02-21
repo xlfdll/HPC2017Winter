@@ -4,16 +4,18 @@
 //
 // Include.h - common and library include directives
 
-#ifndef INCLUDE_H
-#define INCLUDE_H
+#pragma once
 
 #define cimg_display 0
 
 #include <iostream>
+
+#include <Windows.h>
 
 #include "CImg.h"
 
 using namespace std;
 using namespace cimg_library;
 
-#endif // !INCLUDE_H
+#define IMAGE_DIRECTORY_NAME ".\\images"
+#define FEATURE_DIRECTORY_NAME ".\\features"

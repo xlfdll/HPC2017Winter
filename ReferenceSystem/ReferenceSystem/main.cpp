@@ -13,12 +13,20 @@ int main(int argc, char *argv[])
 	// -u: If database folders do not exist, create them and quit; otherwise, update all image features and quit
 	// <filename>: search similar images to the given one
 
-	if (argc < 1)
+	if (argc < 2)
 	{
 		ShowHelp();
 	}
 	else
 	{
-		HandleArguments(argv[1]);
+		// Convert command arguments to Unicode
+		int nArgs;
+		LPTSTR *szArgList = CommandLineToArgvW(GetCommandLine(), &nArgs);
+
+		HandleArguments(szArgList[1]);
+
+		LocalFree(szArgList); // Release memory for Unicode argument list
 	}
+
+	return EXIT_SUCCESS;
 }

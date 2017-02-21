@@ -146,12 +146,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CBIR.h" />
     <ClInclude Include="CImg.h" />
     <ClInclude Include="CmdLine.h" />
     <ClInclude Include="DBIO.h" />
     <ClInclude Include="Include.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CBIR.cpp" />
     <ClCompile Include="CmdLine.cpp" />
     <ClCompile Include="DBIO.cpp" />
     <ClCompile Include="main.cpp" />

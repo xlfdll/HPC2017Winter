@@ -2,13 +2,18 @@
 // CSS 535 Project - Winter 2017
 // Max Strange, Jeremy Albert, Longfei Xi
 //
-// DBIO.cpp - image database I/O functions (declaration)
+// DBIO.h - image database I/O functions (declaration)
 
-#ifndef DBIO_H
-#define DBIO_H
+#pragma once
 
 #include "Include.h"
 
-void InitializeDatabase();
+// Helper functions
 
-#endif
+BOOL DirectoryExists(LPCTSTR szPath);
+
+// Database I/O functions
+
+void InitializeCBIRDatabase();
+void UpdateCBIRDatabase();
+void PerformCBIRSearch(LPCTSTR szPath);
