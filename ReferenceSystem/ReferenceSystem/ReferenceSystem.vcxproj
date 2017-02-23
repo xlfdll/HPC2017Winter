@@ -150,12 +150,14 @@
     <ClInclude Include="CImg.h" />
     <ClInclude Include="CmdLine.h" />
     <ClInclude Include="DBIO.h" />
+    <ClInclude Include="Helper.h" />
     <ClInclude Include="Include.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CBIR.cpp" />
     <ClCompile Include="CmdLine.cpp" />
     <ClCompile Include="DBIO.cpp" />
+    <ClCompile Include="Helper.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

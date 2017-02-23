@@ -6,25 +6,7 @@
 
 #include "DBIO.h"
 
-// Helper functions
-
-BOOL DirectoryExists(LPCTSTR szPath)
-{
-	DWORD dwAttrib = GetFileAttributes(szPath);
-
-	return (dwAttrib != INVALID_FILE_ATTRIBUTES
-		&& (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
-}
-
-int GetSystemProcessorCount()
-{
-	SYSTEM_INFO sysinfo;
-	GetSystemInfo(&sysinfo);
-
-	return sysinfo.dwNumberOfProcessors;
-}
-
-// Database I/O functions
+// Main functions
 
 void InitializeCBIRDatabase()
 {
@@ -33,27 +15,103 @@ void InitializeCBIRDatabase()
 
 	if (!bFeatureDirectory)
 	{
+		cout
+			<< "Feature data directory does not exist."
+			<< endl
+			<< "Creating feature data directory ..."
+			<< endl
+			<< endl;
+
 		CreateDirectory(TEXT(FEATURE_DIRECTORY_NAME), NULL);
 	}
 
 	if (!bImageDirectory)
 	{
+		cout
+			<< "Image data directory does not exist."
+			<< endl
+			<< "Creating image data directory ..."
+			<< endl
+			<< endl;
+
 		CreateDirectory(TEXT(IMAGE_DIRECTORY_NAME), NULL);
 	}
 	else
 	{
+		cout
+			<< "Updating image features ..."
+			<< endl;
+
 		UpdateCBIRDatabase();
 	}
 }
 
 void UpdateCBIRDatabase()
 {
+	StringVector filelist = GetFileList(TEXT(IMAGE_DIRECTORY_NAME));
 	int nCPU = GetSystemProcessorCount();
 
+	cout << filelist.size() << " image file(s) in database." << endl;
 
+	if (filelist.size() == 0) // No need to update if no image files
+	{
+		cout << "No need to update." << endl;
+	}
+	else
+	{
+		cout << "Creating " << nCPU << " thread(s) for feature updating ..." << endl;
+		cout << endl;
+
+		int nFileCountPerThread = (filelist.size() + nCPU - 1) / nCPU;
+		UpdateThreadData *thread_data = new UpdateThreadData[nCPU];
+
+		for (size_t i = 0; i < nCPU; i++)
+		{
+			thread_data[i].filelist = &filelist;
+			thread_data[i].start = i * nFileCountPerThread;
+			thread_data[i].end = thread_data[i].start + nFileCountPerThread;
+		}
+
+		HANDLE *hThreads = new HANDLE[nCPU];
+		DWORD *dwThreadIDs = new DWORD[nCPU];
+
+		for (size_t i = 0; i < nCPU; i++)
+		{
+			hThreads[i] = CreateThread(NULL, 0, UpdateThreadFunction, &thread_data[i], 0, &dwThreadIDs[i]);
+		}
+
+		WaitForMultipleObjects(nCPU, hThreads, TRUE, INFINITE);
+
+		for (size_t i = 0; i < nCPU; i++)
+		{
+			CloseHandle(hThreads[i]);
+		}
+
+		delete[] thread_data;
+		delete[] hThreads;
+		delete[] dwThreadIDs;
+
+		cout << "Done." << endl;
+	}
 }
 
 void PerformCBIRSearch(LPCTSTR szPath)
 {
 
+}
+
+// Thread functions
+
+DWORD WINAPI UpdateThreadFunction(LPVOID lpParam)
+{
+	// Read image pixels and write feature data into feature files
+
+	return 0;
+}
+
+DWORD WINAPI SearchThreadFunction(LPVOID lpParam)
+{
+	// Read image feature data from feature files, and calculate distances with reference image, then output results
+
+	return 0;
 }

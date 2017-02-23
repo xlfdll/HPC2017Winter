@@ -7,13 +7,24 @@
 #pragma once
 
 #include "Include.h"
+#include "Helper.h"
 
-// Helper functions
-
-BOOL DirectoryExists(LPCTSTR szPath);
-
-// Database I/O functions
+// Main functions
 
 void InitializeCBIRDatabase();
 void UpdateCBIRDatabase();
 void PerformCBIRSearch(LPCTSTR szPath);
+
+// Thread argument structures
+
+typedef struct updateThreadData
+{
+	StringVector *filelist;
+	int start;
+	int end;
+} UpdateThreadData;
+
+// Thread functions
+
+DWORD WINAPI UpdateThreadFunction(LPVOID lpParam);
+DWORD WINAPI SearchThreadFunction(LPVOID lpParam);
