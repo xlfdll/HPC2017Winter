@@ -15,7 +15,7 @@ void HandleLastError()
 
 // System
 
-int GetSystemProcessorCount()
+DWORD GetSystemProcessorCount()
 {
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);

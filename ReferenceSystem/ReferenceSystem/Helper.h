@@ -12,7 +12,7 @@
 void HandleLastError();
 
 // System
-int GetSystemProcessorCount();
+DWORD GetSystemProcessorCount();
 
 // I/O
 BOOL DirectoryExists(LPCTSTR szPath);

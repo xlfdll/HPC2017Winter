@@ -19,9 +19,12 @@ void PerformCBIRSearch(LPCTSTR szPath);
 
 typedef struct updateThreadData
 {
+	size_t id;
+
 	StringVector *filelist;
-	int start;
-	int end;
+
+	size_t start;
+	size_t end;
 } UpdateThreadData;
 
 // Thread functions

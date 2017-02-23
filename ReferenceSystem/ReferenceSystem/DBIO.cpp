@@ -49,7 +49,7 @@ void InitializeCBIRDatabase()
 void UpdateCBIRDatabase()
 {
 	StringVector filelist = GetFileList(TEXT(IMAGE_DIRECTORY_NAME));
-	int nCPU = GetSystemProcessorCount();
+	DWORD nCPU = GetSystemProcessorCount();
 
 	cout << filelist.size() << " image file(s) in database." << endl;
 
@@ -62,11 +62,12 @@ void UpdateCBIRDatabase()
 		cout << "Creating " << nCPU << " thread(s) for feature updating ..." << endl;
 		cout << endl;
 
-		int nFileCountPerThread = (filelist.size() + nCPU - 1) / nCPU;
+		size_t nFileCountPerThread = (filelist.size() + nCPU - 1) / nCPU;
 		UpdateThreadData *thread_data = new UpdateThreadData[nCPU];
 
 		for (size_t i = 0; i < nCPU; i++)
 		{
+			thread_data[i].id = i;
 			thread_data[i].filelist = &filelist;
 			thread_data[i].start = i * nFileCountPerThread;
 			thread_data[i].end = thread_data[i].start + nFileCountPerThread;
@@ -105,6 +106,21 @@ void PerformCBIRSearch(LPCTSTR szPath)
 DWORD WINAPI UpdateThreadFunction(LPVOID lpParam)
 {
 	// Read image pixels and write feature data into feature files
+
+	UpdateThreadData *data = (UpdateThreadData *)lpParam;
+	TCHAR szFeaturePath[MAX_PATH];
+
+	for (size_t i = (data->start); i < (data->end); i++)
+	{
+		try
+		{
+			
+		}
+		catch (const CImgIOException&)
+		{
+
+		}
+	}
 
 	return 0;
 }

@@ -6,7 +6,7 @@
 
 #pragma once
 
-#define cimg_display 0
+#define cimg_display 0 // Disable GUI support in CImg
 
 #include <iostream>
 #include <vector>
