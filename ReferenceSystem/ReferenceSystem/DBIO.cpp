@@ -62,6 +62,12 @@ void UpdateCBIRDatabase()
 		cout << "Creating " << nCPU << " thread(s) for feature updating ..." << endl;
 		cout << endl;
 
+		// Initialize Windows GDI+ for image pixel extraction
+		ULONG_PTR gdiplusToken;
+		GdiplusStartupInput gdiplusStartupInput;
+
+		GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
 		size_t nFileCountPerThread = (filelist.size() + nCPU - 1) / nCPU;
 		UpdateThreadData *thread_data = new UpdateThreadData[nCPU];
 
@@ -88,6 +94,9 @@ void UpdateCBIRDatabase()
 			CloseHandle(hThreads[i]);
 		}
 
+		// Shutdown Windows GDI+
+		GdiplusShutdown(gdiplusToken);
+
 		delete[] thread_data;
 		delete[] hThreads;
 		delete[] dwThreadIDs;
@@ -108,18 +117,16 @@ DWORD WINAPI UpdateThreadFunction(LPVOID lpParam)
 	// Read image pixels and write feature data into feature files
 
 	UpdateThreadData *data = (UpdateThreadData *)lpParam;
+	StringVector &filelist = *(data->filelist);
 	TCHAR szFeaturePath[MAX_PATH];
+
+	// TODO: Construct image feature path
 
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
-		try
-		{
-			
-		}
-		catch (const CImgIOException&)
-		{
+		Bitmap *image = new Bitmap(filelist[i].c_str());
 
-		}
+		
 	}
 
 	return 0;

@@ -8,8 +8,6 @@
 
 int main(int argc, char *argv[])
 {
-	cimg::exception_mode(0); // Hide all CImg library messages
-
 	// Parameters:
 	//
 	// -u: If database folders do not exist, create them and quit; otherwise, update all image features and quit

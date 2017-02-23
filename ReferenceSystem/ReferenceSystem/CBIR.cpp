@@ -6,3 +6,71 @@
 
 #include "CBIR.h"
 
+// Intensity color histogram functions
+
+UINT * GetIntensityBins(Bitmap *image)
+{
+	Color pixelColor;
+	UINT *bins = new UINT[INTENSITY_BIN_COUNT];
+
+	ZeroMemory(bins, INTENSITY_BIN_COUNT * sizeof(unsigned int));
+
+	UINT imageWidth = image->GetWidth();
+	UINT imageHeight = image->GetHeight();
+
+	for (UINT i = 0; i < imageWidth; i++)
+	{
+		for (UINT j = 0; j < imageHeight; j++)
+		{
+			image->GetPixel(i, j, &pixelColor);
+
+			int k = GetIntensityBinIndex
+			(
+				pixelColor.GetR(),
+				pixelColor.GetG(),
+				pixelColor.GetB()
+			);
+
+			bins[k]++;
+		}
+	}
+
+	return bins;
+}
+
+int GetIntensityBinIndex(BYTE r, BYTE g, BYTE b)
+{
+	int intensity = (int)(0.299 * r + 0.587 * g + 0.114 * b);
+	int index = intensity / 10;
+
+	if (index > (INTENSITY_BIN_COUNT - 1))
+	{
+		index = INTENSITY_BIN_COUNT - 1;
+	}
+
+	return index;
+}
+
+// Color-Code color histogram functions
+UINT *GetColorCodeBins(Bitmap *image)
+{
+	Color pixelColor;
+	UINT *bins = new UINT[COLORCODE_BIN_COUNT];
+
+	ZeroMemory(bins, COLORCODE_BIN_COUNT * sizeof(unsigned int));
+
+	UINT imageWidth = image->GetWidth();
+	UINT imageHeight = image->GetHeight();
+
+	for (UINT i = 0; i < imageWidth; i++)
+	{
+		for (UINT j = 0; j < imageHeight; j++)
+		{
+			image->GetPixel(i, j, &pixelColor);
+
+			// TODO
+		}
+	}
+
+	return bins;
+}

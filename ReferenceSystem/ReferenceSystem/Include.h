@@ -6,18 +6,17 @@
 
 #pragma once
 
-#define cimg_display 0 // Disable GUI support in CImg
+#pragma comment(lib, "Gdiplus.lib") // Add Windows GDI+ library
 
 #include <iostream>
 #include <vector>
 
 #include <Windows.h>
+#include <gdiplus.h>
 #include <strsafe.h>
 
-#include "CImg.h"
-
 using namespace std;
-using namespace cimg_library;
+using namespace Gdiplus;
 
 #define IMAGE_DIRECTORY_NAME ".\\images"
 #define FEATURE_DIRECTORY_NAME ".\\features"

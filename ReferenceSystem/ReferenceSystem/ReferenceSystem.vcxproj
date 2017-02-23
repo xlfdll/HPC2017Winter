@@ -147,7 +147,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="CBIR.h" />
-    <ClInclude Include="CImg.h" />
     <ClInclude Include="CmdLine.h" />
     <ClInclude Include="DBIO.h" />
     <ClInclude Include="Helper.h" />
