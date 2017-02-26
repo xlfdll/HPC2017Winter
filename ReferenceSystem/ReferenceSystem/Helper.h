@@ -15,5 +15,6 @@ void HandleLastError();
 DWORD GetSystemProcessorCount();
 
 // I/O
-BOOL DirectoryExists(LPCTSTR szPath);
-StringVector GetFileList(LPCTSTR szDirectoryPath);
+BOOL DirectoryExists(PCTSTR pszPath);
+void SimplePathCombine(PTSTR pszPathBuffer, size_t sPathBufferSize, PCTSTR pszFirstElement, PCTSTR pszSecondElement);
+StringVector GetFileList(PCTSTR pszDirectoryPath);

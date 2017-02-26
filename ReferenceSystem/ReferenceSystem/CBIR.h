@@ -18,3 +18,4 @@ int GetIntensityBinIndex(BYTE r, BYTE g, BYTE b);
 
 // Color-Code color histogram functions
 UINT *GetColorCodeBins(Bitmap *image);
+int GetColorCodeBinIndex(BYTE r, BYTE g, BYTE b);

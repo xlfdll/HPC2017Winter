@@ -68,9 +68,21 @@ UINT *GetColorCodeBins(Bitmap *image)
 		{
 			image->GetPixel(i, j, &pixelColor);
 
-			// TODO
+			int k = GetColorCodeBinIndex
+			(
+				pixelColor.GetR(),
+				pixelColor.GetG(),
+				pixelColor.GetB()
+			);
+
+			bins[k]++;
 		}
 	}
 
 	return bins;
+}
+
+int GetColorCodeBinIndex(BYTE r, BYTE g, BYTE b)
+{
+	return ((r & 0xC0) >> 2 | (g & 0xC0) >> 4 | (b & 0xC0) >> 6);
 }

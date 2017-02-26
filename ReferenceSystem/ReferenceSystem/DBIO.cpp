@@ -10,8 +10,8 @@
 
 void InitializeCBIRDatabase()
 {
-	BOOL bImageDirectory = DirectoryExists(TEXT(IMAGE_DIRECTORY_NAME));
-	BOOL bFeatureDirectory = DirectoryExists(TEXT(FEATURE_DIRECTORY_NAME));
+	BOOL bImageDirectory = DirectoryExists(TEXT(IMAGE_DIRECTORY_PATH));
+	BOOL bFeatureDirectory = DirectoryExists(TEXT(FEATURE_DIRECTORY_PATH));
 
 	if (!bFeatureDirectory)
 	{
@@ -22,7 +22,7 @@ void InitializeCBIRDatabase()
 			<< endl
 			<< endl;
 
-		CreateDirectory(TEXT(FEATURE_DIRECTORY_NAME), NULL);
+		CreateDirectory(TEXT(FEATURE_DIRECTORY_PATH), NULL);
 	}
 
 	if (!bImageDirectory)
@@ -34,7 +34,7 @@ void InitializeCBIRDatabase()
 			<< endl
 			<< endl;
 
-		CreateDirectory(TEXT(IMAGE_DIRECTORY_NAME), NULL);
+		CreateDirectory(TEXT(IMAGE_DIRECTORY_PATH), NULL);
 	}
 	else
 	{
@@ -48,7 +48,7 @@ void InitializeCBIRDatabase()
 
 void UpdateCBIRDatabase()
 {
-	StringVector filelist = GetFileList(TEXT(IMAGE_DIRECTORY_NAME));
+	StringVector filelist = GetFileList(TEXT(IMAGE_DIRECTORY_PATH));
 	DWORD nCPU = GetSystemProcessorCount();
 
 	cout << filelist.size() << " image file(s) in database." << endl;
@@ -105,14 +105,16 @@ void UpdateCBIRDatabase()
 	}
 }
 
-void PerformCBIRSearch(LPCTSTR szPath)
+void PerformCBIRSearch(PCTSTR pszPath)
 {
 
 }
 
 // Thread functions
 
-DWORD WINAPI UpdateThreadFunction(LPVOID lpParam)
+mutex cout_mutex;
+
+DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 {
 	// Read image pixels and write feature data into feature files
 
@@ -120,21 +122,60 @@ DWORD WINAPI UpdateThreadFunction(LPVOID lpParam)
 	StringVector &filelist = *(data->filelist);
 	TCHAR szFeaturePath[MAX_PATH];
 
-	// TODO: Construct image feature path
-
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
-		Bitmap *image = new Bitmap(filelist[i].c_str());
+		PCTSTR imagePath = filelist[i].c_str();
+		PTSTR imageFileName = PathFindFileName(imagePath);
+		SimplePathCombine(szFeaturePath, MAX_PATH, TEXT(FEATURE_DIRECTORY_PATH), imageFileName);
+		StringCchCat(szFeaturePath, MAX_PATH, TEXT(FEATURE_EXTENSION));
 
-		
+		/*cout_mutex.lock();
+		cout << imageFileName << " -> " << imageFileName << FEATURE_EXTENSION << endl;
+		cout_mutex.unlock();*/
+
+		Bitmap *image = new Bitmap(imagePath);
+
+		UINT *intensityBins = GetIntensityBins(image);
+		UINT *colorCodeBins = GetColorCodeBins(image);
+
+		wofstream featureStream;
+		featureStream.open(szFeaturePath);
+
+		for (size_t i = 0; i < INTENSITY_BIN_COUNT; i++)
+		{
+			featureStream << intensityBins[i];
+
+			if (i < INTENSITY_BIN_COUNT - 1)
+			{
+				featureStream << ',';
+			}
+		}
+
+		featureStream << endl;
+
+		for (size_t i = 0; i < COLORCODE_BIN_COUNT; i++)
+		{
+			featureStream << colorCodeBins[i];
+
+			if (i < COLORCODE_BIN_COUNT - 1)
+			{
+				featureStream << ',';
+			}
+		}
+
+		featureStream.close();
+
+		delete image;
+		delete[] intensityBins;
+		delete[] colorCodeBins;
 	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
-DWORD WINAPI SearchThreadFunction(LPVOID lpParam)
+DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 {
 	// Read image feature data from feature files, and calculate distances with reference image, then output results
 
-	return 0;
+	return EXIT_SUCCESS;
 }

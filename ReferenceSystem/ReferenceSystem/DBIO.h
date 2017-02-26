@@ -8,12 +8,13 @@
 
 #include "Include.h"
 #include "Helper.h"
+#include "CBIR.h"
 
 // Main functions
 
 void InitializeCBIRDatabase();
 void UpdateCBIRDatabase();
-void PerformCBIRSearch(LPCTSTR szPath);
+void PerformCBIRSearch(PCTSTR pszPath);
 
 // Thread argument structures
 
@@ -29,5 +30,5 @@ typedef struct updateThreadData
 
 // Thread functions
 
-DWORD WINAPI UpdateThreadFunction(LPVOID lpParam);
-DWORD WINAPI SearchThreadFunction(LPVOID lpParam);
+DWORD WINAPI UpdateThreadFunction(PVOID lpParam);
+DWORD WINAPI SearchThreadFunction(PVOID lpParam);
