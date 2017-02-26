@@ -14,7 +14,7 @@
 
 void InitializeCBIRDatabase();
 void UpdateCBIRDatabase();
-void PerformCBIRSearch(PCTSTR pszPath);
+void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method);
 
 // Thread argument structures
 

@@ -14,23 +14,38 @@ void ShowHelp()
 		<< "Max Strange, Jeremy Albert, Longfei Xi" << endl
 		<< endl
 		<< "Usage:" << endl
-		<< "\tCBIRSystem -u | <reference image filename>" << endl
+		<< "\tCBIRSystem -u" << endl
+		<< "OR" << endl
+		<< "\tCBIRSystem (-i | -c) <reference image filename>" << endl
 		<< endl
 		<< "Parameters:" << endl
 		<< "\t-u: create image and feature directories if they do not exist; otherwise, update all image features." << endl
 		<< "OR" << endl
-		<< "\t<reference image filename>: search all images similar to given (reference) image file in image directory" << endl
+		<< "\t-i: use intensity color features" << endl
+		<< "\t-c: use color-code color features" << endl
+		<< "<reference image filename>: search all images similar to given (reference) image file in image directory" << endl
 		<< endl;
 }
 
-void HandleArguments(LPCTSTR szArgument)
+void HandleArguments(PCTSTR *szArgument, int nArgumentCount)
 {
-	if (lstrcmp(TEXT("-u"), szArgument) == 0)
+	if (lstrcmp(TEXT("-u"), szArgument[1]) == 0)
 	{
 		InitializeCBIRDatabase();
 	}
-	else
+	else if (nArgumentCount >= 3)
 	{
-		PerformCBIRSearch(szArgument);
+		CBIRMethod method;
+
+		if (lstrcmp(TEXT("-i"), szArgument[1]) == 0)
+		{
+			method = CBIRMethod::Intensity;
+		}
+		else if (lstrcmp(TEXT("-c"), szArgument[1]) == 0)
+		{
+			method = CBIRMethod::ColorCode;
+		}
+
+		PerformCBIRSearch(szArgument[2], method);
 	}
 }

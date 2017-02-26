@@ -21,9 +21,9 @@ int main(int argc, char *argv[])
 	{
 		// Convert command arguments to Unicode
 		int nArgs;
-		LPTSTR *szArgList = CommandLineToArgvW(GetCommandLine(), &nArgs);
+		PTSTR *szArgList = CommandLineToArgvW(GetCommandLine(), &nArgs);
 
-		HandleArguments(szArgList[1]);
+		HandleArguments(szArgList, nArgs);
 
 		LocalFree(szArgList); // Release memory for Unicode argument list
 	}

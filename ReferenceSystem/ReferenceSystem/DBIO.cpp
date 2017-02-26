@@ -60,7 +60,6 @@ void UpdateCBIRDatabase()
 	else
 	{
 		cout << "Creating " << nCPU << " thread(s) for feature updating ..." << endl;
-		cout << endl;
 
 		// Initialize Windows GDI+ for image pixel extraction
 		ULONG_PTR gdiplusToken;
@@ -105,14 +104,12 @@ void UpdateCBIRDatabase()
 	}
 }
 
-void PerformCBIRSearch(PCTSTR pszPath)
+void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 {
 
 }
 
 // Thread functions
-
-mutex cout_mutex;
 
 DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 {
@@ -128,10 +125,6 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 		PTSTR imageFileName = PathFindFileName(imagePath);
 		SimplePathCombine(szFeaturePath, MAX_PATH, TEXT(FEATURE_DIRECTORY_PATH), imageFileName);
 		StringCchCat(szFeaturePath, MAX_PATH, TEXT(FEATURE_EXTENSION));
-
-		/*cout_mutex.lock();
-		cout << imageFileName << " -> " << imageFileName << FEATURE_EXTENSION << endl;
-		cout_mutex.unlock();*/
 
 		Bitmap *image = new Bitmap(imagePath);
 

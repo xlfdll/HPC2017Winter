@@ -10,4 +10,4 @@
 #include "DBIO.h"
 
 void ShowHelp();
-void HandleArguments(LPCTSTR szArgument);
+void HandleArguments(PCTSTR *szArgument, int nArgumentCount);
