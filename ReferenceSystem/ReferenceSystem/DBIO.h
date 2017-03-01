@@ -28,6 +28,20 @@ typedef struct updateThreadData
 	size_t end;
 } UpdateThreadData;
 
+typedef struct searchThreadData
+{
+	size_t id;
+
+	StringVector *filelist;
+
+	size_t start;
+	size_t end;
+
+	PCTSTR refPath;
+	CBIRMethod method;
+	ResultMultiMap *result;
+} SearchThreadData;
+
 // Thread functions
 
 DWORD WINAPI UpdateThreadFunction(PVOID lpParam);

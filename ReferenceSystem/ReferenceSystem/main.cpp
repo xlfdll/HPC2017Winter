@@ -13,20 +13,26 @@ int main(int argc, char *argv[])
 	// -u: If database folders do not exist, create them and quit; otherwise, update all image features and quit
 	// <filename>: search similar images to the given one
 
-	if (argc < 2)
+	cout
+		<< "Color Histogram CBIR System - Reference System (CPU)" << endl
+		<< "CSS 535 Project - Winter 2017" << endl
+		<< "Max Strange, Jeremy Albert, Longfei Xi" << endl
+		<< endl;
+
+	// Convert command arguments to Unicode
+	int nArgs;
+	PTSTR *szArgList = CommandLineToArgvW(GetCommandLine(), &nArgs);
+
+	if (ValidateArguments(szArgList, nArgs))
 	{
-		ShowHelp();
+		HandleArguments(szArgList, nArgs);
 	}
 	else
 	{
-		// Convert command arguments to Unicode
-		int nArgs;
-		PTSTR *szArgList = CommandLineToArgvW(GetCommandLine(), &nArgs);
-
-		HandleArguments(szArgList, nArgs);
-
-		LocalFree(szArgList); // Release memory for Unicode argument list
+		ShowArgumentHelp();
 	}
+
+	LocalFree(szArgList); // Release memory for Unicode argument list
 
 	return EXIT_SUCCESS;
 }

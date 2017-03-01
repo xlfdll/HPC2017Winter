@@ -86,3 +86,17 @@ int GetColorCodeBinIndex(BYTE r, BYTE g, BYTE b)
 {
 	return ((r & 0xC0) >> 2 | (g & 0xC0) >> 4 | (b & 0xC0) >> 6);
 }
+
+double GetManhattanDistance(const ImageFeatureData *featureA, const ImageFeatureData *featureB)
+{
+	double distance = 0.0;
+
+	for (size_t i = 0; i < featureA->featureCount; i++)
+	{
+		distance += abs(
+			(double)(featureA->features)[i] / (featureA->width * featureA->height)
+			- (double)(featureB->features)[i] / (featureB->width * featureB->height));
+	}
+
+	return distance;
+}

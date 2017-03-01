@@ -9,5 +9,7 @@
 #include "Include.h"
 #include "DBIO.h"
 
-void ShowHelp();
-void HandleArguments(PCTSTR *szArgument, int nArgumentCount);
+BOOL ValidateArguments(PTSTR *szArgument, int nArgumentCount);
+void HandleArguments(PTSTR *szArgument, int nArgumentCount);
+
+void ShowArgumentHelp();

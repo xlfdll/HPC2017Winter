@@ -11,8 +11,11 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
+#include <map>
 #include <mutex>
+#include <cmath>
 
 #include <Windows.h> // Windows API
 #include <Shlwapi.h> // Windows Shell API
@@ -28,3 +31,5 @@ using namespace Gdiplus;
 #define FEATURE_EXTENSION ".feature"
 
 typedef vector<wstring> StringVector;
+typedef multimap<double, wstring> ResultMultiMap;
+typedef pair<double, wstring> ResultPair;
