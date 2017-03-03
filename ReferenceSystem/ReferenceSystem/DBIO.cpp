@@ -184,7 +184,22 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 			CloseHandle(hThreads[i]);
 		}
 
-		// Shutdown Windows GDI+
+		// Write results to results.txt file
+		cout << "Writing results to results.txt file ..." << endl;
+
+		wofstream resultStream;
+		resultStream.open("results.txt");
+
+		for (ResultMultiMap::const_iterator it = result.begin();
+			it != result.end();
+			it++)
+		{
+			resultStream << (*it).second << endl;
+		}
+
+		resultStream.close();
+
+		// Shutdown Windows GDI+ and release resources
 		GdiplusShutdown(gdiplusToken);
 
 		DeleteCriticalSection(&CriticalSection);
@@ -192,6 +207,8 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 		delete[] thread_data;
 		delete[] hThreads;
 		delete[] dwThreadIDs;
+
+		cout << "Done." << endl;
 	}
 }
 
@@ -354,6 +371,7 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 			}
 		}
 
+		// Get distance and construct result map
 		double distance = GetManhattanDistance(refImageFeatureData, dbImageFeatureData);
 
 		EnterCriticalSection(&CriticalSection);
