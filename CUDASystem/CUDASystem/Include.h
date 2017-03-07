@@ -22,6 +22,8 @@
 #include <gdiplus.h> // Windows GDI+
 #include <strsafe.h> // Windows API Safe String Functions
 
+#include <cuda_runtime.h>
+
 using namespace std;
 using namespace Gdiplus;
 
