@@ -82,6 +82,8 @@ void UpdateCBIRDatabase()
 		 */
 		UINT *histogramsI = new UINT[filelist.size() * INTENSITY_BIN_COUNT];
 		UINT *histogramsC = new UINT[filelist.size() * COLORCODE_BIN_COUNT];
+
+		// TODO set up the CUDA stream
 #endif //CUDA_HISTOGRAM
 
 		// Initialize thread arguments
@@ -239,6 +241,29 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 	TCHAR szFeaturePath[MAX_PATH];
 
 #if CUDA_HISTOGRAM
+	/* Iterate over this thread's alotment of images, calling
+ 	 * GetIntensityBins on each image. This function call dumps a kernel
+ 	 * into the stream we have set up. Also call GetColorBins on each
+ 	 * image. The kernel calls will all execute whenever they execute, and
+ 	 * each kernel will simply return the correct values into the correct
+ 	 * spots in the histogram arrays.
+	 */
+	for (size_t i = (data->start); i < (data->end); i++)
+	{
+		PCTSTR imagePath = filelist[i].c_str();
+		Bitmap *image = new Bitmap(imagePath);
+
+		// TODO: give the stream to these function calls
+		UINT *intensityBins = GetIntensityBins(image,
+                                                       data->intensityHistograms,
+                                                       i);
+		UINT *colorCodeBins = GetColorCodeBins(image,
+                                                       data->colorHistograms,
+                                                       i);
+	}
+	// TODO wait for the stream to finish
+#endif //CUDA_HISTOGRAM
+
 
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
@@ -250,8 +275,10 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 
 		Bitmap *image = new Bitmap(imagePath);
 
+#if !CUDA_HISTOGRAM
 		UINT *intensityBins = GetIntensityBins(image);
 		UINT *colorCodeBins = GetColorCodeBins(image);
+#endif
 
 		// Write feature data into files
 		wofstream featureStream;

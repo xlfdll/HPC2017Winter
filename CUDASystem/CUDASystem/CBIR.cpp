@@ -11,19 +11,25 @@
 
 # if CUDA_HISTOGRAM
 /*
- * This version of the GetIntensityBins function pulls out all the pixels in
- * the given image and dumps them asyncronously into the shared CUDA stream of
- * kernels calculating histograms on images.
+ * This function computes both the color and intensity version of the histogram
+ * for the given image.
  *
- * In other words, each thread on the host is given a chunk of images to
- * process, but rather than doing all of the work themselves, they are simply
- * getting the pixels, storing them in a 2D array, and then dumping them into a
- * CUDA stream that does the floating point math for them.
+ * @param image:       The image
+ *
+ * @param histogramsI: The array of intensity histograms that will be filled by
+ *                     CUDA kernel calls.
+ *
+ * @param histogramsC: The array of color histograms that will be filled by
+ *                     CUDA kernel calls.
+ *
+ * @param histIndex:   The index into the array of histograms can be computed
+ *                     by multiplying this value with the width of a color of
+ *                     intensity histogram.
  */
-UINT * GetIntensityBins(Bitmap *image)
+UINT * GetIntensityBins(Bitmap *image, UINT *histogramsI, UINT *histogramsC, histIndex)
 {
 	/*
-	 * Collect the image into a flat array of uint32_t. Each uint32_t has
+	 * Collect the image into a flat array of UINT32s. Each UINT32 has
 	 * the R as the MSB, the G, then B. The LSB is 0.
  	 * On the kernel side, we will extract these three values back out
  	 * using bit operations to compute the histogram.
@@ -51,11 +57,12 @@ UINT * GetIntensityBins(Bitmap *image)
 		}
 	}
 
-	UINT *bins = new UINT[INTENSITY_BIN_COUNT];
-	ZeroMemory(bins, INTENSITY_BIN_COUNT * sizeof(unsigned int));
+	/* Kernel call will compute the histogram and store the results in
+		the right spot in histogramsI and histogramsC */
 
 	// TODO: Dump the pixels array into the stream
-	histogram<<<whatever, whatever>>>(binArray, bins, pixels, imageWidth, imageHeight);
+	histogram<<<whatever, whatever>>>(histogramsI, histogramsC, pixels,
+                                          imageWidth, imageHeight, histIndex);
 }
 #else
 UINT * GetIntensityBins(Bitmap *image)
@@ -87,7 +94,6 @@ UINT * GetIntensityBins(Bitmap *image)
 
 	return bins;
 }
-#endif //CUDA_HISTOGRAM
 
 int GetIntensityBinIndex(BYTE r, BYTE g, BYTE b)
 {
@@ -151,3 +157,4 @@ double GetManhattanDistance(const ImageFeatureData *featureA, const ImageFeature
 
 	return distance;
 }
+#endif //CUDA_HISTOGRAMS
