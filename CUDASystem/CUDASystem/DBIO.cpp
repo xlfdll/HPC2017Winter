@@ -72,6 +72,18 @@ void UpdateCBIRDatabase()
 
 		GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
+#if CUDA_HISTOGRAM
+		/*
+		 * If we are using CUDA for calculating the histograms,
+		 * we set up a stream of kernels, then iterate each thread
+		 * over their alotment of images. Each image is converted
+		 * into pixels and pushed into a kernel call in the stream.
+		 * We collect the results in a giant array of histograms.
+		 */
+		UINT *histogramsI = new UINT[filelist.size() * INTENSITY_BIN_COUNT];
+		UINT *histogramsC = new UINT[filelist.size() * COLORCODE_BIN_COUNT];
+#endif //CUDA_HISTOGRAM
+
 		// Initialize thread arguments
 		size_t nFileCountPerThread = (filelist.size() + nCPU - 1) / nCPU;
 		UpdateThreadData *thread_data = new UpdateThreadData[nCPU];
@@ -82,6 +94,10 @@ void UpdateCBIRDatabase()
 			thread_data[i].filelist = &filelist;
 			thread_data[i].start = i * nFileCountPerThread;
 			thread_data[i].end = thread_data[i].start + nFileCountPerThread;
+#if CUDA_HISTOGRAM
+			thread_data[i].intensityHistograms = histogramsI;
+			thread_data[i].colorHistograms = histogramsC;
+#endif //CUDA_HISTOGRAM
 
 			if (thread_data[i].end > filelist.size())
 			{
@@ -221,6 +237,8 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 	UpdateThreadData *data = (UpdateThreadData *)lpParam;
 	StringVector &filelist = *(data->filelist);
 	TCHAR szFeaturePath[MAX_PATH];
+
+#if CUDA_HISTOGRAM
 
 	for (size_t i = (data->start); i < (data->end); i++)
 	{

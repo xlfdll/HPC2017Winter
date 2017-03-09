@@ -26,6 +26,10 @@ typedef struct updateThreadData
 
 	size_t start;
 	size_t end;
+#if CUDA_HISTOGRAM
+	UINT *intensityHistograms;
+	UINT *colorHistograms;
+#endif
 } UpdateThreadData;
 
 typedef struct searchThreadData

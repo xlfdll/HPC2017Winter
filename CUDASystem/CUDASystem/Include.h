@@ -32,6 +32,17 @@ using namespace Gdiplus;
 
 #define FEATURE_EXTENSION ".feature"
 
+/**
+ * Turn this on or off. If on, it enables the CUDA version of the
+ * histogram calculation.
+ */
+#define CUDA_HISTOGRAM          1
+/**
+ * Turn this on or off. If on, it enables the CUDA version of the
+ * search function.
+ */
+#define CUDA_SEARCH             1
+
 typedef vector<wstring> StringVector;
 typedef multimap<double, wstring> ResultMultiMap;
 typedef pair<double, wstring> ResultPair;
