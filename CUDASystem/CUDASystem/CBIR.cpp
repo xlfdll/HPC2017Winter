@@ -72,17 +72,15 @@ void GetBins(Bitmap *image,
 
 	UINT *pinned_histI, *pinned_histC, *pinned_pixels;
 
-	err = cudaMalloc((void **)&pinned_histI, INTENSITY_BIN_COUNT * sizeof(UINT));
+	err = cudaMallocHost((void **)&pinned_histI, INTENSITY_BIN_COUNT * sizeof(UINT));
 	HANDLE_CUDA_ERROR(err);
 
-	err = cudaMalloc((void **)&dpinned_histC, COLORCODE_BIN_COUNT * sizeof(UINT));
+	err = cudaMallocHost((void **)&dpinned_histC, COLORCODE_BIN_COUNT * sizeof(UINT));
 	HANDLE_CUDA_ERROR(err);
 
-	err = cudaMalloc((void **)&pinned_pixels, imageWidth * imageHeight * sizeof(UINT32));
+	err = cudaMallocHost((void **)&pinned_pixels, imageWidth * imageHeight * sizeof(UINT32));
 	HANDLE_CUDA_ERROR(err);
 
-	memcpy(pinned_histI, &histogramsI[histIndex], INTENSITY_BIN_COUNT * sizeof(UINT));
-	memcpy(pinned_histC, &histogramsC[histIndex], COLORCODE_BIN_COUNT * sizeof(UINT));
 	memcpy(pinned_pixesl, pixels, imageWidth * imageHeight * sizeof(UINT32));
 
 	UINT *dev_histogramI, *dev_histogramC, *dev_pixels;
