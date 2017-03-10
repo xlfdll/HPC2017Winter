@@ -82,6 +82,7 @@ void UpdateCBIRDatabase()
 		 */
 		UINT *histogramsI = new UINT[filelist.size() * INTENSITY_BIN_COUNT];
 		UINT *histogramsC = new UINT[filelist.size() * COLORCODE_BIN_COUNT];
+
 #endif //CUDA_HISTOGRAM
 
 		// Initialize thread arguments
@@ -127,6 +128,10 @@ void UpdateCBIRDatabase()
 		delete[] thread_data;
 		delete[] hThreads;
 		delete[] dwThreadIDs;
+#if CUDA_HISTOGRAM
+		delete[] histogramsI;
+		delete[] histogramsC;
+#endif
 	}
 }
 
@@ -239,6 +244,29 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 	TCHAR szFeaturePath[MAX_PATH];
 
 #if CUDA_HISTOGRAM
+	cudaStream_t stream;
+	cudaError_t err;
+	err = cudaStreamCreate(&stream);
+	HANDLE_CUDA_ERROR(err);
+	/* Iterate over this thread's alotment of images, calling
+ 	 * GetBins on each image. This function call will put the correct
+	 * histogram into each of the histogram arrays.
+	 */
+	for (size_t i = (data->start); i < (data->end); i++)
+	{
+		PCTSTR imagePath = filelist[i].c_str();
+		Bitmap *image = new Bitmap(imagePath);
+
+		GetBins(image,
+	                data->intensityHistograms,
+	                data->colorHistograms,
+	                i,
+	                &stream);
+	}
+	err = cudaStreamDestroy(stream);
+	HANDLE_CUDA_ERROR(err);
+#endif //CUDA_HISTOGRAM
+
 
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
@@ -250,8 +278,13 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 
 		Bitmap *image = new Bitmap(imagePath);
 
+#if CUDA_HISTOGRAM
+		UINT *intensityBins = &(data->intensityHistograms[i * INTENSITY_BIN_COUNT]);
+		UINT *colorCodeBins = &(data->colorHistograms[i * COLORCODE_BIN_COUNT]);
+#else
 		UINT *intensityBins = GetIntensityBins(image);
 		UINT *colorCodeBins = GetColorCodeBins(image);
+#endif
 
 		// Write feature data into files
 		wofstream featureStream;
@@ -287,8 +320,10 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 		featureStream.close();
 
 		delete image;
+#if !CUDA_HISTOGRAM
 		delete[] intensityBins;
 		delete[] colorCodeBins;
+#endif
 	}
 
 	return EXIT_SUCCESS;
