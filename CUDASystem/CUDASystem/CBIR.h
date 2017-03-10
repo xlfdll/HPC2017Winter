@@ -22,12 +22,11 @@ typedef struct imageFeatureData
 
 // Intensity color histogram functions
 #if CUDA_HISTOGRAM
-void GetBins(Bitmap *image, UINT *histogramsI, UINT *histogramsC, UINT histIndex);
-#else
-UINT *GetIntensityBins(Bitmap *image);
-int GetIntensityBinIndex(BYTE r, BYTE g, BYTE b);
+void GetBins(Bitmap *image, UINT *histogramsI, UINT *histogramsC, UINT histIndex,cudaStream_t *stream);
 #endif
 
+UINT *GetIntensityBins(Bitmap *image);
+int GetIntensityBinIndex(BYTE r, BYTE g, BYTE b);
 
 // Color-Code color histogram functions
 UINT *GetColorCodeBins(Bitmap *image);

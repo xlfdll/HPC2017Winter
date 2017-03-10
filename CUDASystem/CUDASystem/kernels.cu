@@ -5,6 +5,8 @@
 // kernels.cu - Kernel functions
 
 #include "kernels.h"
+#include "device_launch_parameters.h"
+#include "CBIR.h"
 
 # if CUDA_HISTOGRAM
 /*
@@ -47,10 +49,11 @@ __global__ void histogram(UINT *histogramI,
                                         (INTENSITY_BIN_COUNT - 1) ?
                                         (INTENSITY_BIN_COUNT - 1) :
                                         (intensity / 10));
+		histogramI[binIndexI]++;
+		histogramC[binIndexC]++;
 	}
 
-	histogramI[binIndexI]++;
-	histogramC[binIndexC]++;
+
 }
 #endif //CUDA_HISTOGRAM
 

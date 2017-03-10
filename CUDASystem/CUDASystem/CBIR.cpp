@@ -7,6 +7,7 @@
 #include "CBIR.h"
 #include "kernels.h"
 
+
 // Intensity color histogram functions
 
 # if CUDA_HISTOGRAM
@@ -45,7 +46,8 @@ void GetBins(Bitmap *image,
 	UINT imageHeight = image->GetHeight();
 
 	UINT32 *pixels = new UINT32[imageWidth * imageHeight];
-	ZeroMemory(bins, imageWidth * imageHeight * sizeof(UINT32));
+	//This should be pixels correct?
+	ZeroMemory(pixels, imageWidth * imageHeight * sizeof(UINT32));
 
 	Color pixelColor;
 	for (UINT i = 0; i < imageWidth; i++)
@@ -75,7 +77,7 @@ void GetBins(Bitmap *image,
 	err = cudaMallocHost((void **)&pinned_histI, INTENSITY_BIN_COUNT * sizeof(UINT));
 	HANDLE_CUDA_ERROR(err);
 
-	err = cudaMallocHost((void **)&dpinned_histC, COLORCODE_BIN_COUNT * sizeof(UINT));
+	err = cudaMallocHost((void **)&pinned_histC, COLORCODE_BIN_COUNT * sizeof(UINT));
 	HANDLE_CUDA_ERROR(err);
 
 	err = cudaMallocHost((void **)&pinned_pixels, imageWidth * imageHeight * sizeof(UINT32));
@@ -83,7 +85,7 @@ void GetBins(Bitmap *image,
 
 	memset(pinned_histI, 0, INTENSITY_BIN_COUNT * sizeof(UINT));
 	memset(pinned_histC, 0, COLORCODE_BIN_COUNT * sizeof(UINT));
-	memcpy(pinned_pixesl, pixels, imageWidth * imageHeight * sizeof(UINT32));
+	memcpy(pinned_pixels, pixels, imageWidth * imageHeight * sizeof(UINT32));
 
 	UINT *dev_histogramI, *dev_histogramC, *dev_pixels;
 
@@ -126,9 +128,9 @@ void GetBins(Bitmap *image,
 	dim3 grid, threads;
 	threads.x = 64;
 	threads.y = 64;
-	grid.x = ceil(imageWidth / (float)threads.x);
-	grid.y = ceil(imageHeight / (float)threads.y);
-	histogram<<<grid, threads>>>(dev_histogramI,
+	grid.x = (int)ceil(imageWidth / (float)threads.x);
+	grid.y = (int)ceil(imageHeight / (float)threads.y);
+	histogram<<< grid, threads>>>(dev_histogramI,
                                      dev_histogramC,
                                      dev_pixels,
                                      imageWidth,

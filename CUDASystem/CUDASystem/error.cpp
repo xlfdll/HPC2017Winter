@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <cuda_runtime.h>
+#include <stdlib.h>
 
 /*
  * Do not call this function directly. Call HANDLE_CUDA_ERROR(err) instead.
@@ -16,7 +17,7 @@ void __handle_cuda_error(cudaError_t err,
                        cudaGetErrorString(err),
                        err);
 		printf("This is at file %s, line %d\n", file_name, line_no);
-		exit(err);
+		exit(EXIT_FAILURE);
 	}
 }
 
