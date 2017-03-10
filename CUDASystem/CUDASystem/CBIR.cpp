@@ -81,6 +81,8 @@ void GetBins(Bitmap *image,
 	err = cudaMallocHost((void **)&pinned_pixels, imageWidth * imageHeight * sizeof(UINT32));
 	HANDLE_CUDA_ERROR(err);
 
+	memset(pinned_histI, 0, INTENSITY_BIN_COUNT * sizeof(UINT));
+	memset(pinned_histC, 0, COLORCODE_BIN_COUNT * sizeof(UINT));
 	memcpy(pinned_pixesl, pixels, imageWidth * imageHeight * sizeof(UINT32));
 
 	UINT *dev_histogramI, *dev_histogramC, *dev_pixels;
