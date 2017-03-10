@@ -68,6 +68,23 @@ void GetBins(Bitmap *image,
 
 	cudaError_t err;
 
+	/* Move the three buffers we need into pinned memory */
+
+	UINT *pinned_histI, *pinned_histC, *pinned_pixels;
+
+	err = cudaMalloc((void **)&pinned_histI, INTENSITY_BIN_COUNT * sizeof(UINT));
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMalloc((void **)&dpinned_histC, COLORCODE_BIN_COUNT * sizeof(UINT));
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMalloc((void **)&pinned_pixels, imageWidth * imageHeight * sizeof(UINT32));
+	HANDLE_CUDA_ERROR(err);
+
+	memcpy(pinned_histI, &histogramsI[histIndex], INTENSITY_BIN_COUNT * sizeof(UINT));
+	memcpy(pinned_histC, &histogramsC[histIndex], COLORCODE_BIN_COUNT * sizeof(UINT));
+	memcpy(pinned_pixesl, pixels, imageWidth * imageHeight * sizeof(UINT32));
+
 	UINT *dev_histogramI, *dev_histogramC, *dev_pixels;
 
 	/* Allocate device memory for the three things */
@@ -83,21 +100,21 @@ void GetBins(Bitmap *image,
 
 	/* Move the stuff to the device */
 
-	err = cudaMemcpyAsync(&histogramsI[histIndex],
+	err = cudaMemcpyAsync(pinned_histI,
                               dev_histogramI,
                               INTENSITY_BIN_COUNT * sizeof(UINT),
                               cudaMemcpyHostToDevice,
                               *stream);
 	HANDLE_CUDA_ERROR(err);
 
-	err = cudaMemcpyAsync(&histogramsC[histIndex],
+	err = cudaMemcpyAsync(pinned_histC,
                               dev_histogramC,
                               COLORCODE_BIN_COUNT * sizeof(UINT),
                               cudaMemcpyHostToDevice,
                               *stream);
 	HANDLE_CUDA_ERROR(err);
 
-	err = cudaMemcpyAsync(&pixels,
+	err = cudaMemcpyAsync(pinned_pixels,
                               dev_pixels,
                               imageWidth * imageHeight * sizeof(UINT32),
                               cudaMemcpyHostToDevice,
@@ -120,18 +137,21 @@ void GetBins(Bitmap *image,
 	/* Transfer the histograms back to the host */
 
 	err = cudaMemcpyAsync(dev_histogramI,
-                              &histogramsI[histIndex],
+                              pinned_histI,
                               INTENSITY_BIN_COUNT * sizeof(UINT),
                               cudaMemcpyDeviceToHost,
                               *stream);
 	HANDLE_CUDA_ERROR(err);
 
 	err = cudaMemcpyAsync(dev_histogramC,
-                              &histogramsC[histIndex],
+                              pinned_histC,
                               COLORCODE_BIN_COUNT * sizeof(UINT),
                               cudaMemcpyDeviceToHost,
                               *stream);
 	HANDLE_CUDA_ERROR(err);
+
+	memcpy(&histogramsI[histIndex], pinned_histI, INTENSITY_BIN_COUNT * sizeof(UINT));
+	memcpy(&histogramsC[histIndex], pinned_histC, COLORCODE_BIN_COUNT * sizeof(UINT));
 
 	/* Wait until all the stuff we put into the stream has completed */
 
@@ -142,6 +162,8 @@ void GetBins(Bitmap *image,
 	cudaFree(dev_histogramC);
 	cudaFree(dev_pixels);
 
+	free(pinned_histI);
+	free(pinned_histC);
 	free(pixels);
 }
 #else
