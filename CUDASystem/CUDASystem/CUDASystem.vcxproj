@@ -22,6 +22,7 @@
     <ClCompile Include="CBIR.cpp" />
     <ClCompile Include="CmdLine.cpp" />
     <ClCompile Include="DBIO.cpp" />
+    <ClCompile Include="error.cpp" />
     <ClCompile Include="Helper.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
@@ -29,8 +30,13 @@
     <ClInclude Include="CBIR.h" />
     <ClInclude Include="CmdLine.h" />
     <ClInclude Include="DBIO.h" />
+    <ClInclude Include="error.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="Include.h" />
+    <ClInclude Include="kernels.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="kernels.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{ADDB0E09-C051-4761-BF52-4392C877260E}</ProjectGuid>
