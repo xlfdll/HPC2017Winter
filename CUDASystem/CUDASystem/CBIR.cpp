@@ -60,9 +60,81 @@ UINT * GetIntensityBins(Bitmap *image, UINT *histogramsI, UINT *histogramsC, his
 	/* Kernel call will compute the histogram and store the results in
 		the right spot in histogramsI and histogramsC */
 
-	// TODO: Dump the pixels array into the stream
-	histogram<<<whatever, whatever>>>(histogramsI, histogramsC, pixels,
-                                          imageWidth, imageHeight, histIndex);
+	cudaError_t err;
+
+	UINT *dev_histogramI, *dev_histogramC, *dev_pixels;
+
+	/* Allocate device memory for the three things */
+
+	err = cudaMalloc((void **)&dev_histogramI, INTENSITY_BIN_COUNT * sizeof(UINT));
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMalloc((void **)&dev_histogramC, COLORCODE_BIN_COUNT * sizeof(UINT));
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMalloc((void **)&dev_pixels, imageWidth * imageHeight * sizeof(UINT32));
+	HANDLE_CUDA_ERROR(err);
+
+	/* Move the stuff to the device */
+
+	err = cudaMemcpyAsync(&histogramsI[histIndex],
+                              dev_histogramI,
+                              INTENSITY_BIN_COUNT * sizeof(UINT),
+                              cudaMemcpyHostToDevice,
+                              stream);
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMemcpyAsync(&histogramsC[histIndex],
+                              dev_histogramC,
+                              COLORCODE_BIN_COUNT * sizeof(UINT),
+                              cudaMemcpyHostToDevice,
+                              stream);
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMemcpyAsync(&pixels,
+                              dev_pixels,
+                              imageWidth * imageHeight * sizeof(UINT32),
+                              cudaMemcpyHostToDevice,
+                              stream);
+	HANDLE_CUDA_ERROR(err);
+
+	/* Execute the kernel */
+
+	dim3 grid, threads;
+	threads.x = 64;
+	threads.y = 64;
+	grid.x = ceil(imageWidth / (float)threads.x);
+	grid.y = ceil(imageHeight / (float)threads.y);
+	histogram<<<grid, threads>>>(dev_histogramI,
+                                          dev_histogramC,
+                                          dev_pixels,
+                                          imageWidth,
+                                          imageHeight);
+
+	/* Transfer the histograms back to the host */
+
+	err = cudaMemcpyAsync(dev_histogramI,
+                              &histogramsI[histIndex],
+                              INTENSITY_BIN_COUNT * sizeof(UINT),
+                              cudaMemcpyDeviceToHost,
+                              stream);
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMemcpyAsync(dev_histogramC,
+                              &histogramsC[histIndex],
+                              COLORCODE_BIN_COUNT * sizeof(UINT),
+                              cudaMemcpyDeviceToHost,
+                              stream);
+	HANDLE_CUDA_ERROR(err);
+
+	/* Wait until all the stuff we put into the stream has completed */
+
+	cudaStreamSynchronize(stream);
+
+	/* Then free up the memory */
+	cudaFree(dev_histogramI);
+	cudaFree(dev_histogramC);
+	cudaFree(dev_pixels);
 }
 #else
 UINT * GetIntensityBins(Bitmap *image)
