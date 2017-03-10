@@ -38,7 +38,7 @@ void GetBins(Bitmap *image,
 	 * Collect the image into a flat array of UINT32s. Each UINT32 has
 	 * the R as the MSB, the G, then B. The LSB is 0.
  	 * On the kernel side, we will extract these three values back out
- 	 * using bit operations to compute the histogram.
+ 	 * using bit operations and then compute the histograms.
 	 */
 
 	UINT imageWidth = image->GetWidth();
@@ -112,10 +112,10 @@ void GetBins(Bitmap *image,
 	grid.x = ceil(imageWidth / (float)threads.x);
 	grid.y = ceil(imageHeight / (float)threads.y);
 	histogram<<<grid, threads>>>(dev_histogramI,
-                                          dev_histogramC,
-                                          dev_pixels,
-                                          imageWidth,
-                                          imageHeight);
+                                     dev_histogramC,
+                                     dev_pixels,
+                                     imageWidth,
+                                     imageHeight);
 
 	/* Transfer the histograms back to the host */
 

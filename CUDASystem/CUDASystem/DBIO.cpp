@@ -83,7 +83,6 @@ void UpdateCBIRDatabase()
 		UINT *histogramsI = new UINT[filelist.size() * INTENSITY_BIN_COUNT];
 		UINT *histogramsC = new UINT[filelist.size() * COLORCODE_BIN_COUNT];
 
-		// TODO set up the CUDA stream
 #endif //CUDA_HISTOGRAM
 
 		// Initialize thread arguments
@@ -129,6 +128,10 @@ void UpdateCBIRDatabase()
 		delete[] thread_data;
 		delete[] hThreads;
 		delete[] dwThreadIDs;
+#if CUDA_HISTOGRAM
+		delete[] histogramsI;
+		delete[] histogramsC;
+#endif
 	}
 }
 
@@ -317,8 +320,10 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 		featureStream.close();
 
 		delete image;
+#if !CUDA_HISTOGRAM
 		delete[] intensityBins;
 		delete[] colorCodeBins;
+#endif
 	}
 
 	return EXIT_SUCCESS;

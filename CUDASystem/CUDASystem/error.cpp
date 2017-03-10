@@ -1,5 +1,8 @@
 #include "error.h"
 
+#include <stdio.h>
+#include <cuda_runtime.h>
+
 /*
  * Do not call this function directly. Call HANDLE_CUDA_ERROR(err) instead.
  */
@@ -16,3 +19,4 @@ void __handle_cuda_error(cudaError_t err,
 		exit(err);
 	}
 }
+
