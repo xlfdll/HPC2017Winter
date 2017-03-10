@@ -43,6 +43,11 @@ using namespace Gdiplus;
  */
 #define CUDA_SEARCH             1
 
+#if CUDA_HISTOGRAM || CUDA_SEARCH
+#define HANDLE_CUDA_ERROR(err) __handle_cuda_error((err), __LINE__, __FILE__)
+#include "error.h"
+#endif
+
 typedef vector<wstring> StringVector;
 typedef multimap<double, wstring> ResultMultiMap;
 typedef pair<double, wstring> ResultPair;

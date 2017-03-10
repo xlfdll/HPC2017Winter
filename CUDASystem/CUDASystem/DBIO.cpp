@@ -241,27 +241,27 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 	TCHAR szFeaturePath[MAX_PATH];
 
 #if CUDA_HISTOGRAM
+	cudaStream_t stream;
+	cudaError_t err;
+	err = cudaStreamCreate(&stream);
+	HANDLE_CUDA_ERROR(err);
 	/* Iterate over this thread's alotment of images, calling
- 	 * GetIntensityBins on each image. This function call dumps a kernel
- 	 * into the stream we have set up. Also call GetColorBins on each
- 	 * image. The kernel calls will all execute whenever they execute, and
- 	 * each kernel will simply return the correct values into the correct
- 	 * spots in the histogram arrays.
+ 	 * GetBins on each image. This function call will put the correct
+	 * histogram into each of the histogram arrays.
 	 */
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
 		PCTSTR imagePath = filelist[i].c_str();
 		Bitmap *image = new Bitmap(imagePath);
 
-		// TODO: give the stream to these function calls
-		UINT *intensityBins = GetIntensityBins(image,
-                                                       data->intensityHistograms,
-                                                       i);
-		UINT *colorCodeBins = GetColorCodeBins(image,
-                                                       data->colorHistograms,
-                                                       i);
+		GetBins(image,
+	                data->intensityHistograms,
+	                data->colorHistograms,
+	                i,
+	                &stream);
 	}
-	// TODO wait for the stream to finish
+	err = cudaStreamDestroy(stream);
+	HANDLE_CUDA_ERROR(err);
 #endif //CUDA_HISTOGRAM
 
 
@@ -275,7 +275,10 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 
 		Bitmap *image = new Bitmap(imagePath);
 
-#if !CUDA_HISTOGRAM
+#if CUDA_HISTOGRAM
+		UINT *intensityBins = &(data->intensityHistograms[i * INTENSITY_BIN_COUNT]);
+		UINT *colorCodeBins = &(data->colorHistograms[i * COLORCODE_BIN_COUNT]);
+#else
 		UINT *intensityBins = GetIntensityBins(image);
 		UINT *colorCodeBins = GetColorCodeBins(image);
 #endif

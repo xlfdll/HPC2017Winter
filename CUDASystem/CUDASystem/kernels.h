@@ -10,15 +10,13 @@
 
 #if CUDA_HISTOGRAM
 /**
- * Computes the intensity- and color-based histograms for a given image and
- * puts the resulting histograms into the correct spot in the histogramsI and
- * histogramsC arrays.
+ * Computes the intensity- and color-based histograms for a given image.
  *
- * @param histogramsI:    Array of intensity histograms. Each call to this
- *                        kernel will fill only one of the histograms in
- *                        this array.
+ * @param histogramI:     The intensity-based histogram to fill for the
+ *                        given image.
  *
- * @param histogramsC:    Array of color histograms.
+ * @param histogramC:     The color-based histogram to fill for the given
+ *                        image.
  *
  * @param pixels:         The image, as pixels of the form RGBX, where each
  *                        letter corresponds to 8 bits, with R being the MSB
@@ -28,16 +26,11 @@
  *
  * @param imageHeight:    The height (y dimension) of the image.
  *
- * @param histIndex:      The index of the histogram we are computing. The
- *                        index into the histogramsI/C arrays is calculated
- *                        by multiplying this value with the length of the
- *                        corresponding type of histogram.
  */
-__global__ void histogram(UINT *histogramsI,
-                          UINT *histogramsC,
+__global__ void histogram(UINT *histogramI,
+                          UINT *histogramC,
                           UINT32 *pixels,
                           UINT imageWidth,
-                          UINT imageHeight,
-                          UINT histIndex);
+                          UINT imageHeight);
 #endif //CUDA_HISTOGRAM
 
