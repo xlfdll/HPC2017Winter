@@ -268,6 +268,7 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 		// Extract features
 		PCTSTR imagePath = filelist[i].c_str();
 		PTSTR imageFileName = PathFindFileName(imagePath);
+		imageFileNames[i - data->start] = imageFileName;
 		SimplePathCombine(szFeaturePath, MAX_PATH, TEXT(FEATURE_DIRECTORY_PATH), imageFileName);
 		StringCchCat(szFeaturePath, MAX_PATH, TEXT(FEATURE_EXTENSION));
 
@@ -401,6 +402,8 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
                                       cudaMemcpyHostToDevice,
                                       stream);
 	HANDLE_CUDA_ERROR(err);
+
+	wstring *imageFileNames = new wstring[numFiles];
 
 	/* Loop over our image files and collect the data we need */
 	for (size_t i = (data->start); i < (data->end); i++)
@@ -544,10 +547,10 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 	/* Dump the results into the result list */
 	for (size_t i = 0; i < numFiles; i++)
 	{
-		double distance = results[i];
+		const double distance = results[i];
 
 		EnterCriticalSection(&CriticalSection);
-		result.insert(ResultPair(distance, imageFileName));
+		result.insert(ResultPair(distance, imageFileNames[i]));
 		LeaveCriticalSection(&CriticalSection);
 	}
 
@@ -557,6 +560,7 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 	delete histograms;
 	delete imageWidths;
 	delete imageHeights;
+	delete imageFileNames;
 
 	return EXIT_SUCCESS;
 }

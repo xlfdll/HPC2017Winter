@@ -70,5 +70,40 @@ __global__ void search_kernel(UINT *histograms,
                               UINT refHeight,
                               UINT refHistLength)
 {
+	/* Get this block's histogram index */
+	const UINT histIndex = blockIdx.x;
+
+	/* Get this thread's index into the big list of histograms */
+	const UINT elIndex = histIndex * refHistLength + threadIdx.x;
+
+	/* Get this block's histogram's width and height */
+	const UINT width = widths[blockIdx.x];
+	const UINT height = heights[blockIdx.x];
+
+	/* Load this block's histogram into shared memory */
+	__shared__ double blockHistogram[MAX(INTENSITY_BIN_COUNT, COLORCODE_BIN_COUNT)];
+	if (elIndex < refHistLength)
+		blockHistogram[threadIdx.x] = histograms[elIndex];
+	__syncthreads();
+
+	/* Do the manhatten distance in parallel */
+	if (threadIdx.x < refHistLength)
+	{
+		const double elDist = abs(
+		      (double)blockHistogram[threadIdx.x] / (width * height) -
+		      (double)refHist[threadIdx.x] / (refWidth * refHeight));
+		blockHistogram[threadIdx.x] = elDist;
+	}
+
+	/* Do the parallel scan over the histograms */
+	for (UINT stride = 1; stride < refHistLength; stride *= 2)
+	{
+		__syncthreads();
+		if (threadIdx.x >= stride)
+			blockHistogram[threadIdx.x] += blockHistogram[threadIdx.x - stride];
+	}
+
+	/* Put the result into the correct place in the results array */
+	results[blockIdx.x] = blockHistogram[refHistLength - 1];
 }
 
