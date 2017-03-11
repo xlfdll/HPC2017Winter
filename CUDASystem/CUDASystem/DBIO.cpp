@@ -9,8 +9,6 @@
 // Critical section for thread synchronization
 CRITICAL_SECTION CriticalSection;
 
-__constant__ UINT refHist[MAX(INTENSITY_BIN_COUNT, COLORCODE_BIN_COUNT)];
-
 // Main functions
 
 void InitializeCBIRDatabase()

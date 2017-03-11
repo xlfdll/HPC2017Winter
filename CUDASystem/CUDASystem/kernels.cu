@@ -8,6 +8,8 @@
 #include "device_launch_parameters.h"
 #include "CBIR.h"
 
+__constant__ UINT refHist[MAX(INTENSITY_BIN_COUNT, COLORCODE_BIN_COUNT)];
+
 /*
  * The algorithm for computing a parallel histogram is as follows:
  * We are given a 2D grid of 2D blocks. Each block is as large as can be
@@ -56,17 +58,17 @@ __global__ void histogram(UINT *histogramI,
 }
 
 /*
- * The algorithm for finding the best match between the given reference image
- * and an image from the database.
- * This algorithm takes a reference image in constant device memory and a list
- * of histograms of the chosen type (taken from the database of images).
- * Each block of threads is flat and of size 1024 / BIN_COUNT, so every
- * BIN_COUNT group of threads is actually operating on a different histogram
- * within the array.
+ * Each block of threads only processes one histogram out of the list of
+ * histograms. This won't be great for our GPU occupancy, but it will have to
+ * do for now.
  */
 __global__ void search_kernel(UINT *histograms,
-                              UINT *ref_hist,
-                              UINT bin_count)
+                              UINT *widths,
+                              UINT *heights,
+                              double *results,
+                              UINT refWidth,
+                              UINT refHeight,
+                              UINT refHistLength)
 {
 }
 
