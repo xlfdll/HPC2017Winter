@@ -57,3 +57,20 @@ __global__ void histogram(UINT *histogramI,
 }
 #endif //CUDA_HISTOGRAM
 
+#if CUDA_SEARCH
+/*
+ * The algorithm for finding the best match between the given reference image
+ * and an image from the database.
+ * This algorithm takes a reference image in constant device memory and a list
+ * of histograms of the chosen type (taken from the database of images).
+ * Each block of threads is flat and of size 1024 / BIN_COUNT, so every
+ * BIN_COUNT group of threads is actually operating on a different histogram
+ * within the array.
+ */
+__global__ void search_kernel(UINT *histograms,
+                              UINT *ref_hist,
+                              UINT bin_count)
+{
+}
+#endif //CUDA_SEARCH
+
