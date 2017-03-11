@@ -9,6 +9,8 @@
 // Critical section for thread synchronization
 CRITICAL_SECTION CriticalSection;
 
+__constant__ UINT refHist[MAX(INTENSITY_BIN_COUNT, COLORCODE_BIN_COUNT)];
+
 // Main functions
 
 void InitializeCBIRDatabase()
@@ -374,14 +376,41 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
          * list of histograms that we will process with a kernel call.
          */
 
-	size_t numFiles = data->end - data->start;
-	UINT *histograms = new UINT[refImageFeatureData->featureCount * numFiles];
-	UINT *imageWidths = new UINT[numFiles];
-	UINT *imageHeights = new UINT[numFiles];
+	const size_t numFiles = data->end - data->start;
+
+	UINT *histograms, *imageWidths, *imageHeights, *pinned_features;
+	double *results;
+	cudaError_t err;
+
+	err = cudaMallocHost((void **)&histograms, refImageFeatureData->featureCount * numFiles * sizeof(UINT));
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMallocHost((void **)&imageWidths, numFiles * sizeof(UINT));
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMallocHost((void **)&imageHeights, numFiles * sizeof(UINT));
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMallocHost((void **)&results, numFiles * sizeof(double));
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMallocHost((void **)&pinned_features, refImageFeatureData->featureCount * numFiles * sizeof(UINT));
 
 	ZeroMemory(histograms, refImageFeatureData->featureCount * numFiles * sizeof(UINT)];
 	ZeroMemory(imageWidths, numFiles * sizeof(UINT));
 	ZeroMemory(imageHeights, numfiles * sizeof(UINT));
+	ZeroMemory(results, numFiles * sizeof(double));
+	memcpy(pinned_features, refImageFeatureData->features, refImageFeatureData->featureCount * numFiles * sizeof(UINT));
+
+	cudaStream_t stream;
+	err = cudaStreamCreate(&stream);
+
+	err = cudaMemcpyToSymbolAsync((const void *)refHist,
+                                      MAX(INTENSITY_BIN_COUNT, COLORCODE_BIN_COUNT) * sizeof(UINT),
+                                      0,
+                                      cudaMemcpyHostToDevice,
+                                      stream);
+	HANDLE_CUDA_ERROR(err);
 
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
@@ -438,28 +467,92 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 
 		wistringstream wiss(featureLine);
 
-		for (size_t i = 0; i < dbImageFeatureData->featureCount; i++)
+		for (size_t j = 0; j < dbImageFeatureData->featureCount; j++)
 		{
 			wiss >> dbImageFeatureData->features[i];
+			histograms[(i - data->start) * refImageFeatureData->featureCount + j] = dbImageFeatureData->features[i];
 
-			if (i < dbImageFeatureData->featureCount - 1)
+			if (j < dbImageFeatureData->featureCount - 1)
 			{
 				wiss.ignore();
 			}
 		}
 
-		// Get distance and construct result map
-		double distance = GetManhattanDistance(refImageFeatureData, dbImageFeatureData);
-
-		EnterCriticalSection(&CriticalSection);
-		result.insert(ResultPair(distance, imageFileName));
-		LeaveCriticalSection(&CriticalSection);
-
 		delete[] dbImageFeatureData->features;
 		delete dbImageFeatureData;
 	}
 
+	/*
+         * At this point, we have the array of histograms we need to give to
+         * the kernel call. Let's load them onto the GPU.
+         */
+	UINT *devHistograms, *devWidths, *devHeights, *devResults;
+
+	err = cudaMemcpyAsync(histograms,
+                              devHistograms,
+                              refImageFeatureData->featureCount * numFiles * sizeof(UINT),
+                              cudaMemcpyHostToDevice,
+                              stream);
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMemcpyAsync(imageWidths,
+                              devWidths,
+                              numFiles * sizeof(UINT),
+                              cudaMemcpyHostToDevice,
+                              stream);
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMemcpyAsync(imageHeights,
+                              devHeights,
+                              numFiles * sizeof(UINT),
+                              cudaMemcpyHostToDevice,
+                              stream);
+	HANDLE_CUDA_ERROR(err);
+
+	err = cudaMemcpyAsync(results,
+                              devResults,
+                              numFiles * sizeof(double),
+                              cudaMemcpyHostToDevice,
+                              stream);
+	HANDLE_CUDA_ERROR(err);
+
+	dim3 grid, threads;
+	threads.x = data->method == Intensity ?
+                                    2 * INTENSITY_BIN_COUNT :
+                                    COLORCODE_BIN_COUNT;
+	grid.x = (int)ceil(refImageFeatureData->featureCount * numFiles /
+                           (float)threads.x);
+	histogram<<<grid, threads, stream>>>(devHistograms,
+                                             devWidths,
+                                             devHeights,
+                                             devResults,
+                                             refImageFeatureData->width,
+                                             refImageFeatureData->height,
+                                             refImageFeatureData->featureCount);
+
+	err = cudaMemcpyAsync(devResults,
+                              results,
+                              numFiles * sizeof(double),
+                              cudaMemcpyDeviceToHost,
+                              stream);
+	HANDLE_CUDA_ERROR(err);
+
+	for (size_t i = 0; i < numFiles; i++)
+	{
+		double distance = results[i];
+
+		EnterCriticalSection(&CriticalSection);
+		result.insert(ResultPair(distance, imageFileName));
+		LeaveCriticalSection(&CriticalSection);
+	}
+
+	cudaStreamSynchronize(stream);
+
 	delete refImageFeatureData;
+	delete results;
+	delete histograms;
+	delete imageWidths;
+	delete imageHeights;
 
 	return EXIT_SUCCESS;
 }
