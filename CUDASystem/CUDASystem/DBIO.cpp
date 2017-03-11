@@ -75,8 +75,7 @@ void UpdateCBIRDatabase()
 		GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
 		/*
-		 * If we are using CUDA for calculating the histograms,
-		 * we set up a stream of kernels, then iterate each thread
+		 * Set up a stream of kernels, then iterate each thread
 		 * over their alotment of images. Each image is converted
 		 * into pixels and pushed into a kernel call in the stream.
 		 * We collect the results in a giant array of histograms.
@@ -356,14 +355,20 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
          * Go through each of the files in this thread's section of files and
          * collect a histogram for each one. Put each histogram into a giant
          * list of histograms that we will process with a kernel call.
+         * We will also need to know the width and height of the image that
+         * created each histogram, so put that information into arrays as well.
+         * Also, each thread will need to know the reference image's histogram,
+         * so put that into constant memory.
          */
 
 	const size_t numFiles = data->end - data->start;
 
+	/* Declare the arrays (including a results array) */
 	UINT *histograms, *imageWidths, *imageHeights, *pinned_features;
 	double *results;
 	cudaError_t err;
 
+	/* Allocate space for each array in pinned memory */
 	err = cudaMallocHost((void **)&histograms, refImageFeatureData->featureCount * numFiles * sizeof(UINT));
 	HANDLE_CUDA_ERROR(err);
 
@@ -378,15 +383,20 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 
 	err = cudaMallocHost((void **)&pinned_features, refImageFeatureData->featureCount * numFiles * sizeof(UINT));
 
+	/* Zero all the arrays */
 	ZeroMemory(histograms, refImageFeatureData->featureCount * numFiles * sizeof(UINT)];
 	ZeroMemory(imageWidths, numFiles * sizeof(UINT));
 	ZeroMemory(imageHeights, numfiles * sizeof(UINT));
 	ZeroMemory(results, numFiles * sizeof(double));
+
+	/* Memcpy the reference histogram into the pinned memory we declared */
 	memcpy(pinned_features, refImageFeatureData->features, refImageFeatureData->featureCount * numFiles * sizeof(UINT));
 
+	/* Create a CUDA stream for this thread */
 	cudaStream_t stream;
 	err = cudaStreamCreate(&stream);
 
+	/* Start an asynchronous memcpy to the GPU of the reference hist */
 	err = cudaMemcpyToSymbolAsync((const void *)refHist,
                                       MAX(INTENSITY_BIN_COUNT, COLORCODE_BIN_COUNT) * sizeof(UINT),
                                       0,
@@ -394,6 +404,7 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
                                       stream);
 	HANDLE_CUDA_ERROR(err);
 
+	/* Loop over our image files and collect the data we need */
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
 		dbImageFeatureData = new ImageFeatureData;
@@ -452,7 +463,10 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 		for (size_t j = 0; j < dbImageFeatureData->featureCount; j++)
 		{
 			wiss >> dbImageFeatureData->features[i];
-			histograms[(i - data->start) * refImageFeatureData->featureCount + j] = dbImageFeatureData->features[i];
+			/* Put this number into the histogram we are currently
+                         * working on */
+			const size_t index = (i - data->start) * refImageFeatureData->featureCount + j;
+			histograms[index] = dbImageFeatureData->features[i];
 
 			if (j < dbImageFeatureData->featureCount - 1)
 			{
@@ -498,12 +512,15 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
                               stream);
 	HANDLE_CUDA_ERROR(err);
 
+	/*
+         * Call the kernel with a naive number of blocks. Only histograms size
+         * number of threads per block. This won't lead to great occupancy.
+         * This makes it very easy to orient ourselves in the memory space of
+         * the arrays though.
+         */
 	dim3 grid, threads;
-	threads.x = data->method == Intensity ?
-                                    2 * INTENSITY_BIN_COUNT :
-                                    COLORCODE_BIN_COUNT;
-	grid.x = (int)ceil(refImageFeatureData->featureCount * numFiles /
-                           (float)threads.x);
+	threads.x = refImageFeatureData->featureCount;
+	grid.x = numFiles;//Each block will process one histogram
 	histogram<<<grid, threads, stream>>>(devHistograms,
                                              devWidths,
                                              devHeights,
@@ -512,6 +529,7 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
                                              refImageFeatureData->height,
                                              refImageFeatureData->featureCount);
 
+	/* Move the results back into pinned memory */
 	err = cudaMemcpyAsync(devResults,
                               results,
                               numFiles * sizeof(double),
@@ -519,6 +537,13 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
                               stream);
 	HANDLE_CUDA_ERROR(err);
 
+	/* Sync with and then destroy the stream */
+	cudaStreamSynchronize(stream);
+
+	err = cudaStreamDestroy(stream);
+	HANDLE_CUDA_ERROR(err);
+
+	/* Dump the results into the result list */
 	for (size_t i = 0; i < numFiles; i++)
 	{
 		double distance = results[i];
@@ -528,8 +553,7 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 		LeaveCriticalSection(&CriticalSection);
 	}
 
-	cudaStreamSynchronize(stream);
-
+	/* Clear up the memory */
 	delete refImageFeatureData;
 	delete results;
 	delete histograms;
@@ -538,3 +562,4 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 
 	return EXIT_SUCCESS;
 }
+
