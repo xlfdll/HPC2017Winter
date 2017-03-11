@@ -9,6 +9,8 @@
 #pragma comment(lib, "Shlwapi.lib") // Windows Shell API
 #pragma comment(lib, "Gdiplus.lib") // Windows GDI+
 
+#include "error.h"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -32,21 +34,7 @@ using namespace Gdiplus;
 
 #define FEATURE_EXTENSION ".feature"
 
-/**
- * Turn this on or off. If on, it enables the CUDA version of the
- * histogram calculation.
- */
-#define CUDA_HISTOGRAM          1
-/**
- * Turn this on or off. If on, it enables the CUDA version of the
- * search function.
- */
-#define CUDA_SEARCH             1
-
-#if CUDA_HISTOGRAM || CUDA_SEARCH
 #define HANDLE_CUDA_ERROR(err) __handle_cuda_error((err), __LINE__, __FILE__)
-#include "error.h"
-#endif
 
 typedef vector<wstring> StringVector;
 typedef multimap<double, wstring> ResultMultiMap;

@@ -10,7 +10,6 @@
 
 // Intensity color histogram functions
 
-# if CUDA_HISTOGRAM
 /*
  * This function computes both the color and intensity version of the histogram
  * for the given image.
@@ -168,7 +167,7 @@ void GetBins(Bitmap *image,
 	free(pinned_histC);
 	free(pixels);
 }
-#else
+
 UINT * GetIntensityBins(Bitmap *image)
 {
 	Color pixelColor;
@@ -261,4 +260,4 @@ double GetManhattanDistance(const ImageFeatureData *featureA, const ImageFeature
 
 	return distance;
 }
-#endif //CUDA_HISTOGRAMS
+

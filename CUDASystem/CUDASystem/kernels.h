@@ -8,7 +8,6 @@
 
 #include "Include.h"
 
-#if CUDA_HISTOGRAM
 /**
  * Computes the intensity- and color-based histograms for a given image.
  *
@@ -32,5 +31,36 @@ __global__ void histogram(UINT *histogramI,
                           UINT32 *pixels,
                           UINT imageWidth,
                           UINT imageHeight);
-#endif //CUDA_HISTOGRAM
 
+
+/**
+ * Computes the manhatten distance between each histogram in the histograms
+ * array and the refHist in constant memory. Returns the results in the results
+ * array.
+ *
+ * @param histograms:     The array of histograms from the database.
+ *
+ * @param widths:         The widths of each image from the database, must be
+ *                        the same order as the histograms.
+ *
+ * @param heights:        The heights of each image from the database, must be
+ *                        the same order as the histograms.
+ *
+ * @param results:        The results array. The kernel call will fill this
+ *                        array with the distances. The one that is smallest
+ *                        from that list is the most likely match. These will
+ *                        also be in the same order as the other arrays.
+ *
+ * @param refWidth:       The reference image width.
+ *
+ * @param refHeight:      The reference image height.
+ *
+ * @param refHistLength:  The length of each histogram.
+ */
+__global__ void search_kernel(UINT *histograms,
+                              UINT *widths,
+                              UINT *heights,
+                              double *results,
+                              UINT refWidth,
+                              UINT refHeight,
+                              UINT refHistLength);
