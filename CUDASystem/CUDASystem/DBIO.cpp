@@ -74,7 +74,6 @@ void UpdateCBIRDatabase()
 
 		GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-#if CUDA_HISTOGRAM
 		/*
 		 * If we are using CUDA for calculating the histograms,
 		 * we set up a stream of kernels, then iterate each thread
@@ -84,8 +83,6 @@ void UpdateCBIRDatabase()
 		 */
 		UINT *histogramsI = new UINT[filelist.size() * INTENSITY_BIN_COUNT];
 		UINT *histogramsC = new UINT[filelist.size() * COLORCODE_BIN_COUNT];
-
-#endif //CUDA_HISTOGRAM
 
 		// Initialize thread arguments
 		size_t nFileCountPerThread = (filelist.size() + nCPU - 1) / nCPU;
@@ -97,10 +94,8 @@ void UpdateCBIRDatabase()
 			thread_data[i].filelist = &filelist;
 			thread_data[i].start = i * nFileCountPerThread;
 			thread_data[i].end = thread_data[i].start + nFileCountPerThread;
-#if CUDA_HISTOGRAM
 			thread_data[i].intensityHistograms = histogramsI;
 			thread_data[i].colorHistograms = histogramsC;
-#endif //CUDA_HISTOGRAM
 
 			if (thread_data[i].end > filelist.size())
 			{
@@ -130,10 +125,8 @@ void UpdateCBIRDatabase()
 		delete[] thread_data;
 		delete[] hThreads;
 		delete[] dwThreadIDs;
-#if CUDA_HISTOGRAM
 		delete[] histogramsI;
 		delete[] histogramsC;
-#endif
 	}
 }
 
@@ -250,7 +243,6 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 	StringVector &filelist = *(data->filelist);
 	TCHAR szFeaturePath[MAX_PATH];
 
-#if CUDA_HISTOGRAM
 	cudaStream_t stream;
 	cudaError_t err;
 	err = cudaStreamCreate(&stream);
@@ -272,7 +264,6 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 	}
 	err = cudaStreamDestroy(stream);
 	HANDLE_CUDA_ERROR(err);
-#endif //CUDA_HISTOGRAM
 
 
 	for (size_t i = (data->start); i < (data->end); i++)
@@ -285,13 +276,8 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 
 		Bitmap *image = new Bitmap(imagePath);
 
-#if CUDA_HISTOGRAM
 		UINT *intensityBins = &(data->intensityHistograms[i * INTENSITY_BIN_COUNT]);
 		UINT *colorCodeBins = &(data->colorHistograms[i * COLORCODE_BIN_COUNT]);
-#else
-		UINT *intensityBins = GetIntensityBins(image);
-		UINT *colorCodeBins = GetColorCodeBins(image);
-#endif
 
 		// Write feature data into files
 		wofstream featureStream;
@@ -327,10 +313,6 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 		featureStream.close();
 
 		delete image;
-#if !CUDA_HISTOGRAM
-		delete[] intensityBins;
-		delete[] colorCodeBins;
-#endif
 	}
 
 	return EXIT_SUCCESS;

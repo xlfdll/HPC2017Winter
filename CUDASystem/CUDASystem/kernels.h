@@ -8,7 +8,6 @@
 
 #include "Include.h"
 
-#if CUDA_HISTOGRAM
 /**
  * Computes the intensity- and color-based histograms for a given image.
  *
@@ -32,5 +31,4 @@ __global__ void histogram(UINT *histogramI,
                           UINT32 *pixels,
                           UINT imageWidth,
                           UINT imageHeight);
-#endif //CUDA_HISTOGRAM
 

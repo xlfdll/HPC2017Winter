@@ -8,7 +8,6 @@
 #include "device_launch_parameters.h"
 #include "CBIR.h"
 
-# if CUDA_HISTOGRAM
 /*
  * The algorithm for computing a parallel histogram is as follows:
  * We are given a 2D grid of 2D blocks. Each block is as large as can be
@@ -55,9 +54,7 @@ __global__ void histogram(UINT *histogramI,
 
 
 }
-#endif //CUDA_HISTOGRAM
 
-#if CUDA_SEARCH
 /*
  * The algorithm for finding the best match between the given reference image
  * and an image from the database.
@@ -72,5 +69,4 @@ __global__ void search_kernel(UINT *histograms,
                               UINT bin_count)
 {
 }
-#endif //CUDA_SEARCH
 
