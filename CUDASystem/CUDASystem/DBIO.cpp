@@ -195,7 +195,12 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 
 		for (size_t i = 0; i < nCPU; i++)
 		{
-			hThreads[i] = CreateThread(NULL, 0, SearchThreadFunction, &thread_data[i], 0, &dwThreadIDs[i]);
+			hThreads[i] = CreateThread(NULL,
+                                                   0,
+                                                   SearchThreadFunction,
+                                                   &thread_data[i],
+                                                   0,
+                                                   &dwThreadIDs[i]);
 		}
 
 		WaitForMultipleObjects(nCPU, hThreads, TRUE, INFINITE);
@@ -363,6 +368,21 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 	ResultMultiMap &result = *(data->result);
 	ImageFeatureData *dbImageFeatureData;
 
+	/*
+         * Go through each of the files in this thread's section of files and
+         * collect a histogram for each one. Put each histogram into a giant
+         * list of histograms that we will process with a kernel call.
+         */
+
+	size_t numFiles = data->end - data->start;
+	UINT *histograms = new UINT[refImageFeatureData->featureCount * numFiles];
+	UINT *imageWidths = new UINT[numFiles];
+	UINT *imageHeights = new UINT[numFiles];
+
+	ZeroMemory(histograms, refImageFeatureData->featureCount * numFiles * sizeof(UINT)];
+	ZeroMemory(imageWidths, numFiles * sizeof(UINT));
+	ZeroMemory(imageHeights, numfiles * sizeof(UINT));
+
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
 		dbImageFeatureData = new ImageFeatureData;
@@ -393,6 +413,10 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 		featureStream >> dbImageFeatureData->width;
 		featureStream.ignore();
 		featureStream >> dbImageFeatureData->height;
+
+		// Read image size information into corresponding arrays
+		imageWidths[i - data->start] = dbImageFeatureData->width;
+		imageHeights[i - data->start] = dbImageFeatureData->height;
 
 		getline(featureStream, featureLine); // Skip endline
 
