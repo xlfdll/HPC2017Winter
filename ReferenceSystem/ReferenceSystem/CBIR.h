@@ -17,7 +17,7 @@ typedef struct imageFeatureData
 	UINT height;
 
 	UINT *features;
-	int featureCount;
+	size_t featureCount;
 } ImageFeatureData;
 
 // Intensity color histogram functions

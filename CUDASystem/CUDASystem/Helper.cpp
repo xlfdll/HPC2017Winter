@@ -65,3 +65,16 @@ StringVector GetFileList(PCTSTR pszDirectoryPath)
 
 	return filelist;
 }
+
+// CUDA
+void HandleCUDAError(cudaError_t errorCode, unsigned int lineNumber, const char *fileName)
+{
+	if (errorCode != cudaSuccess)
+	{
+		cout
+			<< "CUDA ERROR (" << errorCode << "): " << cudaGetErrorString(errorCode)
+			<< " at " << fileName << " (Line: " << lineNumber << ")" << endl;
+
+		exit(EXIT_FAILURE);
+	}
+}

@@ -8,10 +8,10 @@
 
 BOOL ValidateArguments(PTSTR *szArgument, int nArgumentCount)
 {
-	if (nArgumentCount >= 2
-		&& ((lstrcmp(TEXT("-u"), szArgument[1]) == 0)
-			|| lstrcmp(TEXT("-i"), szArgument[1]) == 0
-			|| lstrcmp(TEXT("-c"), szArgument[1]) == 0))
+	if ((nArgumentCount >= 2 && lstrcmp(TEXT("-u"), szArgument[1]) == 0)
+		|| (nArgumentCount >= 3
+			&& (lstrcmp(TEXT("-i"), szArgument[1]) == 0
+				|| lstrcmp(TEXT("-c"), szArgument[1]) == 0)))
 	{
 		return TRUE;
 	}

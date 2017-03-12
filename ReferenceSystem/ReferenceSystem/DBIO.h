@@ -37,9 +37,10 @@ typedef struct searchThreadData
 	size_t start;
 	size_t end;
 
-	PCTSTR refPath;
-	CBIRMethod method;
+	ImageFeatureData *refData;
 	ResultMultiMap *result;
+
+	CBIRMethod method;
 } SearchThreadData;
 
 // Thread functions

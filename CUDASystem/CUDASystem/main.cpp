@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 	// <filename>: search similar images to the given one
 
 	cout
-		<< "Color Histogram CBIR System - Reference System (CPU)" << endl
+		<< "Color Histogram CBIR System - CUDA Implementation (GPU)" << endl
 		<< "CSS 535 Project - Winter 2017" << endl
 		<< "Max Strange, Jeremy Albert, Longfei Xi" << endl
 		<< endl;

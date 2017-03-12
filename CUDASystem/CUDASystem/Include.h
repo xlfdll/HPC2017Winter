@@ -9,15 +9,11 @@
 #pragma comment(lib, "Shlwapi.lib") // Windows Shell API
 #pragma comment(lib, "Gdiplus.lib") // Windows GDI+
 
-#include "error.h"
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <vector>
 #include <map>
-#include <mutex>
-#include <cmath>
 
 #include <Windows.h> // Windows API
 #include <Shlwapi.h> // Windows Shell API
@@ -33,8 +29,6 @@ using namespace Gdiplus;
 #define FEATURE_DIRECTORY_PATH ".\\features"
 
 #define FEATURE_EXTENSION ".feature"
-
-#define HANDLE_CUDA_ERROR(err) __handle_cuda_error((err), __LINE__, __FILE__)
 
 typedef vector<wstring> StringVector;
 typedef multimap<double, wstring> ResultMultiMap;

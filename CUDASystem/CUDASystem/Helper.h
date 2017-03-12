@@ -15,3 +15,8 @@ DWORD GetSystemProcessorCount();
 BOOL DirectoryExists(PCTSTR pszPath);
 void SimplePathCombine(PTSTR pszPathBuffer, size_t sPathBufferSize, PCTSTR pszFirstElement, PCTSTR pszSecondElement);
 StringVector GetFileList(PCTSTR pszDirectoryPath);
+
+// CUDA
+void HandleCUDAError(cudaError_t errorCode, unsigned int lineNumber, const char *fileName);
+
+#define HANDLE_CUDA_ERROR(errorCode) HandleCUDAError((errorCode), __LINE__, __FILE__)

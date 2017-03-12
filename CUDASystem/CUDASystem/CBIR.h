@@ -7,30 +7,50 @@
 #pragma once
 
 #include "Include.h"
+#include "Helper.h"
 
 #define INTENSITY_BIN_COUNT 25
 #define COLORCODE_BIN_COUNT 64
 
-typedef struct imageFeatureData
+// Structures
+
+typedef struct simpleColor
 {
-	UINT width;
-	UINT height;
+	BYTE r;
+	BYTE g;
+	BYTE b;
+	BYTE a; // Alpha channel, for padding only
+} SimpleColor;
 
-	UINT *features;
-	int featureCount;
-} ImageFeatureData;
+// CUDA kernel launch functions
+void LaunchUpdateKernel
+(
+	cudaStream_t stream, cudaDeviceProp *cudaDeviceInfo,
+	SimpleColor *pixels, UINT imageWidth, UINT imageHeight,
+	UINT *intensityBins, UINT *colorCodeBins
+);
+void LaunchSearchKernel
+(
+	cudaStream_t stream,
+	UINT *dbImageHistogramBins, UINT *dbImagePixelCounts, UINT dbImageCount,
+	UINT refImagePixelCount, UINT histogramBinCount, double *distanceResults
+);
+void PrepareSearchKernel(UINT *refImageHistogramBins, UINT histogramBinCount);
 
-// Intensity color histogram functions
-void GetBins(Bitmap *image, UINT *histogramsI, UINT *histogramsC, UINT histIndex,cudaStream_t *stream);
+// CUDA kernels
+__global__ void UpdateHistogramBins
+(
+	SimpleColor *pixels, UINT imageWidth, UINT imageHeight,
+	UINT *intensityBins, UINT *colorCodeBins
+);
+__global__ void GetHistogramDistance
+(
+	UINT *dbImageHistogramBins, UINT *dbImagePixelCounts,
+	double refImagePixelCount, double *distanceResults
+);
 
-UINT *GetIntensityBins(Bitmap *image);
-int GetIntensityBinIndex(BYTE r, BYTE g, BYTE b);
-
-// Color-Code color histogram functions
-UINT *GetColorCodeBins(Bitmap *image);
-int GetColorCodeBinIndex(BYTE r, BYTE g, BYTE b);
-
-// Distance functions
-double GetManhattanDistance(const ImageFeatureData *featureA, const ImageFeatureData *featureB);
+// Color histogram bin helper functions
+__device__ int GetIntensityBinIndex(BYTE r, BYTE g, BYTE b);
+__device__ int GetColorCodeBinIndex(BYTE r, BYTE g, BYTE b);
 
 enum CBIRMethod { Intensity, ColorCode };

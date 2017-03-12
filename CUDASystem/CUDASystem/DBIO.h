@@ -26,8 +26,8 @@ typedef struct updateThreadData
 
 	size_t start;
 	size_t end;
-	UINT *intensityHistograms;
-	UINT *colorHistograms;
+
+	cudaDeviceProp *cudaDeviceInfo;
 } UpdateThreadData;
 
 typedef struct searchThreadData
@@ -39,9 +39,12 @@ typedef struct searchThreadData
 	size_t start;
 	size_t end;
 
-	PCTSTR refPath;
 	CBIRMethod method;
-	ResultMultiMap *result;
+
+	UINT refImagePixelCount;
+
+	ResultMultiMap *resultMap;
+	cudaDeviceProp *cudaDeviceInfo;
 } SearchThreadData;
 
 // Thread functions

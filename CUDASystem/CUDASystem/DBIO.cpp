@@ -5,9 +5,8 @@
 // DBIO.cpp - image database I/O functions (definition)
 
 #include "DBIO.h"
-#include "kernels.cuh"
 
-// Critical section for thread synchronization
+// Critical section for CPU thread synchronization
 CRITICAL_SECTION CriticalSection;
 
 // Main functions
@@ -67,22 +66,17 @@ void UpdateCBIRDatabase()
 		DWORD nCPU = GetSystemProcessorCount();
 		cout << "Creating " << nCPU << " thread(s) for feature updating ..." << endl;
 
+		cudaDeviceProp cudaDeviceInfo;
+		cudaGetDeviceProperties(&cudaDeviceInfo, 0);
+		cout << "Using " << cudaDeviceInfo.name << " GPU for acceleration ..." << endl;
+
 		// Initialize Windows GDI+ for image pixel extraction
 		ULONG_PTR gdiplusToken;
 		GdiplusStartupInput gdiplusStartupInput;
 
 		GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-		/*
-		 * Set up a stream of kernels, then iterate each thread
-		 * over their alotment of images. Each image is converted
-		 * into pixels and pushed into a kernel call in the stream.
-		 * We collect the results in a giant array of histograms.
-		 */
-		UINT *histogramsI = new UINT[filelist.size() * INTENSITY_BIN_COUNT];
-		UINT *histogramsC = new UINT[filelist.size() * COLORCODE_BIN_COUNT];
-
-		// Initialize thread arguments
+		// Initialize CPU thread arguments
 		size_t nFileCountPerThread = (filelist.size() + nCPU - 1) / nCPU;
 		UpdateThreadData *thread_data = new UpdateThreadData[nCPU];
 
@@ -92,16 +86,16 @@ void UpdateCBIRDatabase()
 			thread_data[i].filelist = &filelist;
 			thread_data[i].start = i * nFileCountPerThread;
 			thread_data[i].end = thread_data[i].start + nFileCountPerThread;
-			thread_data[i].intensityHistograms = histogramsI;
-			thread_data[i].colorHistograms = histogramsC;
 
 			if (thread_data[i].end > filelist.size())
 			{
 				thread_data[i].end = filelist.size();
 			}
+
+			thread_data[i].cudaDeviceInfo = &cudaDeviceInfo;
 		}
 
-		// Start threads
+		// Start CPU threads
 		HANDLE *hThreads = new HANDLE[nCPU];
 		DWORD *dwThreadIDs = new DWORD[nCPU];
 
@@ -123,8 +117,6 @@ void UpdateCBIRDatabase()
 		delete[] thread_data;
 		delete[] hThreads;
 		delete[] dwThreadIDs;
-		delete[] histogramsI;
-		delete[] histogramsC;
 	}
 }
 
@@ -153,6 +145,10 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 		DWORD nCPU = GetSystemProcessorCount();
 		cout << "Creating " << nCPU << " thread(s) for searching ..." << endl;
 
+		cudaDeviceProp cudaDeviceInfo;
+		cudaGetDeviceProperties(&cudaDeviceInfo, 0);
+		cout << "Using " << cudaDeviceInfo.name << " GPU for acceleration ..." << endl;
+
 		// Initialize Windows GDI+ for image pixel extraction
 		ULONG_PTR gdiplusToken;
 		GdiplusStartupInput gdiplusStartupInput;
@@ -161,10 +157,85 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 
 		InitializeCriticalSection(&CriticalSection);
 
-		// Initialize thread arguments
+		// Read reference image feature data
+		Bitmap *image = new Bitmap(pszPath);
+
+		UINT imageWidth = image->GetWidth();
+		UINT imageHeight = image->GetHeight();
+		UINT imagePixelCount = imageWidth * imageHeight;
+
+		SimpleColor *pixels;
+		HANDLE_CUDA_ERROR(cudaMallocHost(&pixels, imagePixelCount * sizeof(SimpleColor)));
+
+		Color pixelColor;
+
+		for (UINT i = 0; i < imageWidth; i++)
+		{
+			for (UINT j = 0; j < imageHeight; j++)
+			{
+				image->GetPixel(i, j, &pixelColor);
+
+				pixels[j * imageWidth + i] = { pixelColor.GetR(), pixelColor.GetG(), pixelColor.GetB() };
+			}
+		}
+
+		delete image;
+
+		// Initialize a CUDA stream
+		cudaStream_t stream;
+		HANDLE_CUDA_ERROR(cudaStreamCreate(&stream));
+
+		// Memory copy: host -> device
+		SimpleColor *d_pixels;
+		HANDLE_CUDA_ERROR(cudaMalloc(&d_pixels, imagePixelCount * sizeof(SimpleColor)));
+		HANDLE_CUDA_ERROR(cudaMemcpyAsync(d_pixels, pixels, imagePixelCount * sizeof(SimpleColor), cudaMemcpyHostToDevice, stream));
+
+		// Prepare histogram bins on device
+		UINT *d_intensityBins, *d_colorCodeBins;
+		HANDLE_CUDA_ERROR(cudaMalloc(&d_intensityBins, INTENSITY_BIN_COUNT * sizeof(UINT)));
+		HANDLE_CUDA_ERROR(cudaMalloc(&d_colorCodeBins, COLORCODE_BIN_COUNT * sizeof(UINT)));
+		HANDLE_CUDA_ERROR(cudaMemsetAsync(d_intensityBins, 0, INTENSITY_BIN_COUNT * sizeof(UINT), stream));
+		HANDLE_CUDA_ERROR(cudaMemsetAsync(d_colorCodeBins, 0, COLORCODE_BIN_COUNT * sizeof(UINT), stream));
+
+		// Launch kernels
+		LaunchUpdateKernel(stream, &cudaDeviceInfo, d_pixels, imageWidth, imageHeight, d_intensityBins, d_colorCodeBins);
+
+		// Memory copy: device -> device (constant)
+		UINT *d_histogramBins;
+		UINT histogramBinCount;
+
+		switch (method)
+		{
+		case Intensity:
+			d_histogramBins = d_intensityBins;
+			histogramBinCount = INTENSITY_BIN_COUNT;
+			break;
+		case ColorCode:
+			d_histogramBins = d_colorCodeBins;
+			histogramBinCount = COLORCODE_BIN_COUNT;
+			break;
+		default:
+			break;
+		}
+
+		HANDLE_CUDA_ERROR(cudaStreamSynchronize(stream));
+
+		// Release CUDA stream resources
+		HANDLE_CUDA_ERROR(cudaStreamDestroy(stream));
+
+		// Copy reference image feature data to constant memory
+		PrepareSearchKernel(d_histogramBins, histogramBinCount);
+
+		HANDLE_CUDA_ERROR(cudaFree(d_pixels));
+		HANDLE_CUDA_ERROR(cudaFree(d_intensityBins));
+		HANDLE_CUDA_ERROR(cudaFree(d_colorCodeBins));
+
+		HANDLE_CUDA_ERROR(cudaFreeHost(pixels));
+
+		// Initialize CPU thread arguments
 		size_t nFileCountPerThread = (featureFilelist.size() + nCPU - 1) / nCPU;
 		SearchThreadData *thread_data = new SearchThreadData[nCPU];
-		ResultMultiMap result;
+		ResultMultiMap resultMap;
 
 		for (size_t i = 0; i < nCPU; i++)
 		{
@@ -172,28 +243,25 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 			thread_data[i].filelist = &featureFilelist;
 			thread_data[i].start = i * nFileCountPerThread;
 			thread_data[i].end = thread_data[i].start + nFileCountPerThread;
-			thread_data[i].refPath = pszPath;
-			thread_data[i].method = method;
-			thread_data[i].result = &result;
 
 			if (thread_data[i].end > featureFilelist.size())
 			{
 				thread_data[i].end = featureFilelist.size();
 			}
+
+			thread_data[i].method = method;
+			thread_data[i].refImagePixelCount = imagePixelCount;
+			thread_data[i].resultMap = &resultMap;
+			thread_data[i].cudaDeviceInfo = &cudaDeviceInfo;
 		}
 
-		// Start threads
+		// Start CPU threads
 		HANDLE *hThreads = new HANDLE[nCPU];
 		DWORD *dwThreadIDs = new DWORD[nCPU];
 
 		for (size_t i = 0; i < nCPU; i++)
 		{
-			hThreads[i] = CreateThread(NULL,
-                                                   0,
-                                                   SearchThreadFunction,
-                                                   &thread_data[i],
-                                                   0,
-                                                   &dwThreadIDs[i]);
+			hThreads[i] = CreateThread(NULL, 0, SearchThreadFunction, &thread_data[i], 0, &dwThreadIDs[i]);
 		}
 
 		WaitForMultipleObjects(nCPU, hThreads, TRUE, INFINITE);
@@ -209,8 +277,8 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 		wofstream resultStream;
 		resultStream.open("results.txt");
 
-		for (ResultMultiMap::const_iterator it = result.begin();
-			it != result.end();
+		for (ResultMultiMap::const_iterator it = resultMap.begin();
+			it != resultMap.end();
 			it++)
 		{
 			resultStream << (*it).second << endl;
@@ -231,7 +299,7 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 	}
 }
 
-// Thread functions
+// CPU thread functions
 
 DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 {
@@ -241,49 +309,84 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 	StringVector &filelist = *(data->filelist);
 	TCHAR szFeaturePath[MAX_PATH];
 
-	cudaStream_t stream;
-	cudaError_t err;
-	err = cudaStreamCreate(&stream);
-	HANDLE_CUDA_ERROR(err);
-	/* Iterate over this thread's alotment of images, calling
- 	 * GetBins on each image. This function call will put the correct
-	 * histogram into each of the histogram arrays.
-	 */
-	for (size_t i = (data->start); i < (data->end); i++)
-	{
-		PCTSTR imagePath = filelist[i].c_str();
-		Bitmap *image = new Bitmap(imagePath);
-
-		GetBins(image,
-	                data->intensityHistograms,
-	                data->colorHistograms,
-	                i,
-	                &stream);
-	}
-	err = cudaStreamDestroy(stream);
-	HANDLE_CUDA_ERROR(err);
-
+	cudaDeviceProp *cudaDeviceInfo = data->cudaDeviceInfo;
 
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
-		// Extract features
+		// Extract pixel colors
 		PCTSTR imagePath = filelist[i].c_str();
 		PTSTR imageFileName = PathFindFileName(imagePath);
-		imageFileNames[i - data->start] = imageFileName;
 		SimplePathCombine(szFeaturePath, MAX_PATH, TEXT(FEATURE_DIRECTORY_PATH), imageFileName);
 		StringCchCat(szFeaturePath, MAX_PATH, TEXT(FEATURE_EXTENSION));
 
 		Bitmap *image = new Bitmap(imagePath);
 
-		UINT *intensityBins = &(data->intensityHistograms[i * INTENSITY_BIN_COUNT]);
-		UINT *colorCodeBins = &(data->colorHistograms[i * COLORCODE_BIN_COUNT]);
+		UINT imageWidth = image->GetWidth();
+		UINT imageHeight = image->GetHeight();
+		UINT imagePixelCount = imageWidth * imageHeight;
+
+		SimpleColor *pixels;
+		HANDLE_CUDA_ERROR(cudaMallocHost(&pixels, imagePixelCount * sizeof(SimpleColor)));
+
+		Color pixelColor;
+
+		for (UINT i = 0; i < imageWidth; i++)
+		{
+			for (UINT j = 0; j < imageHeight; j++)
+			{
+				image->GetPixel(i, j, &pixelColor);
+
+				pixels[j * imageWidth + i] = { pixelColor.GetR(), pixelColor.GetG(), pixelColor.GetB() };
+			}
+		}
+
+		delete image;
+
+		// Initialize a CUDA stream
+		cudaStream_t stream;
+		HANDLE_CUDA_ERROR(cudaStreamCreate(&stream));
+
+		// Memory copy: host -> device
+		SimpleColor *d_pixels;
+		HANDLE_CUDA_ERROR(cudaMalloc(&d_pixels, imagePixelCount * sizeof(SimpleColor)));
+		HANDLE_CUDA_ERROR(cudaMemcpyAsync(d_pixels, pixels, imagePixelCount * sizeof(SimpleColor), cudaMemcpyHostToDevice, stream));
+
+		// Prepare histogram bins on device
+		UINT *d_intensityBins, *d_colorCodeBins;
+		HANDLE_CUDA_ERROR(cudaMalloc(&d_intensityBins, INTENSITY_BIN_COUNT * sizeof(UINT)));
+		HANDLE_CUDA_ERROR(cudaMalloc(&d_colorCodeBins, COLORCODE_BIN_COUNT * sizeof(UINT)));
+		HANDLE_CUDA_ERROR(cudaMemsetAsync(d_intensityBins, 0, INTENSITY_BIN_COUNT * sizeof(UINT), stream));
+		HANDLE_CUDA_ERROR(cudaMemsetAsync(d_colorCodeBins, 0, COLORCODE_BIN_COUNT * sizeof(UINT), stream));
+
+		// Launch kernels
+		LaunchUpdateKernel(stream, cudaDeviceInfo, d_pixels, imageWidth, imageHeight, d_intensityBins, d_colorCodeBins);
+
+		// Prepare histogram bins on host
+		UINT *intensityBins, *colorCodeBins;
+		HANDLE_CUDA_ERROR(cudaMallocHost(&intensityBins, INTENSITY_BIN_COUNT * sizeof(UINT)));
+		HANDLE_CUDA_ERROR(cudaMallocHost(&colorCodeBins, COLORCODE_BIN_COUNT * sizeof(UINT)));
+
+		// Memory copy: device -> host
+		HANDLE_CUDA_ERROR(cudaMemcpyAsync(intensityBins, d_intensityBins, INTENSITY_BIN_COUNT * sizeof(UINT), cudaMemcpyDeviceToHost, stream));
+		HANDLE_CUDA_ERROR(cudaMemcpyAsync(colorCodeBins, d_colorCodeBins, COLORCODE_BIN_COUNT * sizeof(UINT), cudaMemcpyDeviceToHost, stream));
+
+		HANDLE_CUDA_ERROR(cudaStreamSynchronize(stream));
+
+		// Release CUDA stream resources
+		HANDLE_CUDA_ERROR(cudaStreamDestroy(stream));
+
+		HANDLE_CUDA_ERROR(cudaFree(d_pixels));
+		HANDLE_CUDA_ERROR(cudaFree(d_intensityBins));
+		HANDLE_CUDA_ERROR(cudaFree(d_colorCodeBins));
+
+		HANDLE_CUDA_ERROR(cudaFreeHost(pixels));
 
 		// Write feature data into files
 		wofstream featureStream;
 		featureStream.open(szFeaturePath);
 
 		featureStream << imageFileName << endl; // Write image file name
-		featureStream << image->GetWidth() << ',' << image->GetHeight() << endl; // Write image size information
+		featureStream << imageWidth << ',' << imageHeight << endl; // Write image size information
 
 		// Write intensity color histogram feature data
 		for (size_t i = 0; i < INTENSITY_BIN_COUNT; i++)
@@ -311,9 +414,143 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 
 		featureStream.close();
 
-		delete image;
+		HANDLE_CUDA_ERROR(cudaFreeHost(intensityBins));
+		HANDLE_CUDA_ERROR(cudaFreeHost(colorCodeBins));
 	}
 
 	return EXIT_SUCCESS;
 }
 
+DWORD WINAPI SearchThreadFunction(PVOID lpParam)
+{
+	// Read image feature data from feature files, and calculate distances with reference image, then output results
+
+	SearchThreadData *data = (SearchThreadData *)lpParam;
+
+	cudaDeviceProp *cudaDeviceInfo = data->cudaDeviceInfo;
+
+	// Read feature files
+	StringVector &filelist = *(data->filelist);
+	ResultMultiMap &resultMap = *(data->resultMap);
+
+	size_t fileCount = data->end - data->start;
+
+	UINT histogramBinCount;
+
+	switch (data->method)
+	{
+	case Intensity:
+		histogramBinCount = INTENSITY_BIN_COUNT;
+		break;
+	case ColorCode:
+		histogramBinCount = COLORCODE_BIN_COUNT;
+		break;
+	default:
+		break;
+	}
+
+	// Prepare histogram bins and image pixel count array on host
+	UINT *histogramBins, *pixelCounts;
+	HANDLE_CUDA_ERROR(cudaMallocHost(&histogramBins, fileCount * histogramBinCount * sizeof(UINT)));
+	HANDLE_CUDA_ERROR(cudaMallocHost(&pixelCounts, fileCount * sizeof(UINT)));
+
+	// Prepare result array on device
+	double *d_distanceResults;
+	HANDLE_CUDA_ERROR(cudaMalloc(&d_distanceResults, fileCount * sizeof(double)));
+
+	for (size_t i = (data->start); i < (data->end); i++)
+	{
+		size_t fileID = i - data->start;
+
+		UINT width, height;
+
+		wstring imageFileName, featureLine;
+		wifstream featureStream;
+
+		featureStream.open(filelist[i]);
+
+		// Read image file name
+		getline(featureStream, imageFileName);
+
+		// Read image size information
+		featureStream >> width;
+		featureStream.ignore();
+		featureStream >> height;
+
+		pixelCounts[fileID] = width * height;
+
+		getline(featureStream, featureLine); // Skip endline
+
+		// Read image feature data
+		switch (data->method)
+		{
+		case Intensity:
+			getline(featureStream, featureLine); // Read intensity histogram feature data
+			break;
+		case ColorCode:
+			getline(featureStream, featureLine); // Skip intensity histogram feature data
+			getline(featureStream, featureLine); // Read color-code histogram feature data
+			break;
+		default:
+			break;
+		}
+
+		featureStream.close();
+
+		wistringstream wiss(featureLine);
+
+		for (size_t i = 0; i < histogramBinCount; i++)
+		{
+			wiss >> histogramBins[fileID * histogramBinCount + i];
+
+			if (i < histogramBinCount - 1)
+			{
+				wiss.ignore();
+			}
+		}
+	}
+
+	// Initialize a CUDA stream
+	cudaStream_t stream;
+	HANDLE_CUDA_ERROR(cudaStreamCreate(&stream));
+
+	// Memory copy: host -> device
+	UINT *d_histogramBins, *d_pixelCounts;
+	HANDLE_CUDA_ERROR(cudaMalloc(&d_histogramBins, fileCount * histogramBinCount * sizeof(UINT)));
+	HANDLE_CUDA_ERROR(cudaMalloc(&d_pixelCounts, fileCount * sizeof(UINT)));
+	HANDLE_CUDA_ERROR(cudaMemcpyAsync(d_histogramBins, histogramBins, fileCount * histogramBinCount * sizeof(UINT), cudaMemcpyHostToDevice, stream));
+	HANDLE_CUDA_ERROR(cudaMemcpyAsync(d_pixelCounts, pixelCounts, fileCount * sizeof(UINT), cudaMemcpyHostToDevice, stream));
+
+	LaunchSearchKernel(stream, d_histogramBins, d_pixelCounts, fileCount, data->refImagePixelCount, histogramBinCount, d_distanceResults);
+
+	// Prepare result array on host
+	double *distanceResults;
+	HANDLE_CUDA_ERROR(cudaMallocHost(&distanceResults, fileCount * sizeof(double)));
+
+	// Memory copy: device -> host
+	HANDLE_CUDA_ERROR(cudaMemcpyAsync(distanceResults, d_distanceResults, fileCount * sizeof(double), cudaMemcpyDeviceToHost, stream));
+
+	HANDLE_CUDA_ERROR(cudaStreamSynchronize(stream));
+
+	// Release CUDA stream resources
+	HANDLE_CUDA_ERROR(cudaStreamDestroy(stream));
+
+	HANDLE_CUDA_ERROR(cudaFree(d_histogramBins));
+	HANDLE_CUDA_ERROR(cudaFree(d_pixelCounts));
+	HANDLE_CUDA_ERROR(cudaFree(d_distanceResults));
+
+	HANDLE_CUDA_ERROR(cudaFreeHost(histogramBins));
+	HANDLE_CUDA_ERROR(cudaFreeHost(pixelCounts));
+
+	// Get distance and construct result map
+	for (size_t i = (data->start); i < (data->end); i++)
+	{
+		EnterCriticalSection(&CriticalSection);
+		resultMap.insert(ResultPair(distanceResults[i - data->start], filelist[i]));
+		LeaveCriticalSection(&CriticalSection);
+	}
+
+	HANDLE_CUDA_ERROR(cudaFreeHost(distanceResults));
+
+	return EXIT_SUCCESS;
+}

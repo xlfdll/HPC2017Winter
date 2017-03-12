@@ -147,6 +147,29 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 
 		InitializeCriticalSection(&CriticalSection);
 
+		// Get reference image features
+		Bitmap *image = new Bitmap(pszPath);
+		ImageFeatureData *refImageFeatureData = new ImageFeatureData;
+
+		refImageFeatureData->width = image->GetWidth();
+		refImageFeatureData->height = image->GetHeight();
+
+		switch (method)
+		{
+		case Intensity:
+			refImageFeatureData->features = GetIntensityBins(image);
+			refImageFeatureData->featureCount = INTENSITY_BIN_COUNT;
+			break;
+		case ColorCode:
+			refImageFeatureData->features = GetColorCodeBins(image);
+			refImageFeatureData->featureCount = COLORCODE_BIN_COUNT;
+			break;
+		default:
+			break;
+		}
+
+		delete image;
+
 		// Initialize thread arguments
 		size_t nFileCountPerThread = (featureFilelist.size() + nCPU - 1) / nCPU;
 		SearchThreadData *thread_data = new SearchThreadData[nCPU];
@@ -158,9 +181,9 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 			thread_data[i].filelist = &featureFilelist;
 			thread_data[i].start = i * nFileCountPerThread;
 			thread_data[i].end = thread_data[i].start + nFileCountPerThread;
-			thread_data[i].refPath = pszPath;
-			thread_data[i].method = method;
+			thread_data[i].refData = refImageFeatureData;
 			thread_data[i].result = &result;
+			thread_data[i].method = method;
 
 			if (thread_data[i].end > featureFilelist.size())
 			{
@@ -207,6 +230,8 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 		delete[] thread_data;
 		delete[] hThreads;
 		delete[] dwThreadIDs;
+
+		delete refImageFeatureData;
 
 		cout << "Done." << endl;
 	}
@@ -282,29 +307,6 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 
 	SearchThreadData *data = (SearchThreadData *)lpParam;
 
-	// Read reference image feature data
-	Bitmap *image = new Bitmap(data->refPath);
-	ImageFeatureData *refImageFeatureData = new ImageFeatureData;
-
-	refImageFeatureData->width = image->GetWidth();
-	refImageFeatureData->height = image->GetHeight();
-
-	switch (data->method)
-	{
-	case Intensity:
-		refImageFeatureData->features = GetIntensityBins(image);
-		refImageFeatureData->featureCount = INTENSITY_BIN_COUNT;
-		break;
-	case ColorCode:
-		refImageFeatureData->features = GetColorCodeBins(image);
-		refImageFeatureData->featureCount = COLORCODE_BIN_COUNT;
-		break;
-	default:
-		break;
-	}
-
-	delete image;
-
 	// Read feature files
 	StringVector &filelist = *(data->filelist);
 	ResultMultiMap &result = *(data->result);
@@ -372,7 +374,7 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 		}
 
 		// Get distance and construct result map
-		double distance = GetManhattanDistance(refImageFeatureData, dbImageFeatureData);
+		double distance = GetManhattanDistance(data->refData, dbImageFeatureData);
 
 		EnterCriticalSection(&CriticalSection);
 		result.insert(ResultPair(distance, imageFileName));
@@ -381,8 +383,6 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 		delete[] dbImageFeatureData->features;
 		delete dbImageFeatureData;
 	}
-
-	delete refImageFeatureData;
 
 	return EXIT_SUCCESS;
 }
