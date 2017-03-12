@@ -281,7 +281,11 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 			it != resultMap.end();
 			it++)
 		{
+#ifdef OUTPUT_FOR_DEBUG
+			resultStream << (*it).second << ": " << (*it).first << endl;
+#else
 			resultStream << (*it).second << endl;
+#endif
 		}
 
 		resultStream.close();

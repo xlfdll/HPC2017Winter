@@ -33,3 +33,5 @@ using namespace Gdiplus;
 typedef vector<wstring> StringVector;
 typedef multimap<double, wstring> ResultMultiMap;
 typedef pair<double, wstring> ResultPair;
+
+#define OUTPUT_FOR_DEBUG
