@@ -83,7 +83,7 @@ void UpdateCBIRDatabase()
 		for (size_t i = 0; i < nCPU; i++)
 		{
 			thread_data[i].id = i;
-			thread_data[i].filelist = &filelist;
+			thread_data[i].fileList = &filelist;
 			thread_data[i].start = i * nFileCountPerThread;
 			thread_data[i].end = thread_data[i].start + nFileCountPerThread;
 
@@ -122,25 +122,27 @@ void UpdateCBIRDatabase()
 
 void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 {
-	StringVector featureFilelist;
+	StringVector featureFileList;
 
 	if (DirectoryExists(TEXT(FEATURE_DIRECTORY_PATH)))
 	{
-		featureFilelist = GetFileList(TEXT(FEATURE_DIRECTORY_PATH));
+		featureFileList = GetFileList(TEXT(FEATURE_DIRECTORY_PATH));
 	}
 
 	if (!PathFileExists(pszPath))
 	{
 		cout << "Reference image file do not exist." << endl;
 	}
-	else if (featureFilelist.size() == 0)
+	else if (featureFileList.size() == 0)
 	{
 		cout << "Image features do not exist." << endl;
 		cout << "Run \"CBIRSystem -u\" to update the database." << endl;
 	}
 	else
 	{
-		cout << featureFilelist.size() << " image file(s) scanned in database." << endl;
+		wstring *imageFileList = new wstring[featureFileList.size()];
+
+		cout << featureFileList.size() << " image file(s) scanned in database." << endl;
 
 		DWORD nCPU = GetSystemProcessorCount();
 		cout << "Creating " << nCPU << " thread(s) for searching ..." << endl;
@@ -233,20 +235,21 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 		HANDLE_CUDA_ERROR(cudaFreeHost(pixels));
 
 		// Initialize CPU thread arguments
-		size_t nFileCountPerThread = (featureFilelist.size() + nCPU - 1) / nCPU;
+		size_t nFileCountPerThread = (featureFileList.size() + nCPU - 1) / nCPU;
 		SearchThreadData *thread_data = new SearchThreadData[nCPU];
 		ResultMultiMap resultMap;
 
 		for (size_t i = 0; i < nCPU; i++)
 		{
 			thread_data[i].id = i;
-			thread_data[i].filelist = &featureFilelist;
+			thread_data[i].imageFileList = imageFileList;
+			thread_data[i].featureFileList = &featureFileList;
 			thread_data[i].start = i * nFileCountPerThread;
 			thread_data[i].end = thread_data[i].start + nFileCountPerThread;
 
-			if (thread_data[i].end > featureFilelist.size())
+			if (thread_data[i].end > featureFileList.size())
 			{
-				thread_data[i].end = featureFilelist.size();
+				thread_data[i].end = featureFileList.size();
 			}
 
 			thread_data[i].method = method;
@@ -298,6 +301,7 @@ void PerformCBIRSearch(PCTSTR pszPath, CBIRMethod method)
 		delete[] thread_data;
 		delete[] hThreads;
 		delete[] dwThreadIDs;
+		delete[] imageFileList;
 
 		cout << "Done." << endl;
 	}
@@ -310,7 +314,7 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 	// Read image pixels and write feature data into feature files
 
 	UpdateThreadData *data = (UpdateThreadData *)lpParam;
-	StringVector &filelist = *(data->filelist);
+	StringVector &fileList = *(data->fileList);
 	TCHAR szFeaturePath[MAX_PATH];
 
 	cudaDeviceProp *cudaDeviceInfo = data->cudaDeviceInfo;
@@ -318,7 +322,7 @@ DWORD WINAPI UpdateThreadFunction(PVOID lpParam)
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
 		// Extract pixel colors
-		PCTSTR imagePath = filelist[i].c_str();
+		PCTSTR imagePath = fileList[i].c_str();
 		PTSTR imageFileName = PathFindFileName(imagePath);
 		SimplePathCombine(szFeaturePath, MAX_PATH, TEXT(FEATURE_DIRECTORY_PATH), imageFileName);
 		StringCchCat(szFeaturePath, MAX_PATH, TEXT(FEATURE_EXTENSION));
@@ -434,7 +438,8 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 	cudaDeviceProp *cudaDeviceInfo = data->cudaDeviceInfo;
 
 	// Read feature files
-	StringVector &filelist = *(data->filelist);
+	wstring *imageFilelist = data->imageFileList;
+	StringVector &featureFilelist = *(data->featureFileList);
 	ResultMultiMap &resultMap = *(data->resultMap);
 
 	size_t fileCount = data->end - data->start;
@@ -471,10 +476,11 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 		wstring imageFileName, featureLine;
 		wifstream featureStream;
 
-		featureStream.open(filelist[i]);
+		featureStream.open(featureFilelist[i]);
 
 		// Read image file name
 		getline(featureStream, imageFileName);
+		imageFilelist[i] = imageFileName;
 
 		// Read image size information
 		featureStream >> width;
@@ -550,7 +556,7 @@ DWORD WINAPI SearchThreadFunction(PVOID lpParam)
 	for (size_t i = (data->start); i < (data->end); i++)
 	{
 		EnterCriticalSection(&CriticalSection);
-		resultMap.insert(ResultPair(distanceResults[i - data->start], filelist[i]));
+		resultMap.insert(ResultPair(distanceResults[i - data->start], imageFilelist[i]));
 		LeaveCriticalSection(&CriticalSection);
 	}
 
