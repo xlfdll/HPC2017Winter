@@ -23,6 +23,11 @@ BOOL ValidateArguments(PTSTR *szArgument, int nArgumentCount)
 
 void HandleArguments(PTSTR *szArgument, int nArgumentCount)
 {
+#ifdef OUTPUT_FOR_DEBUG
+	cout << "Start timer ..." << endl;
+	ULONGLONG startTicks = GetTickCount64();
+#endif
+
 	if (lstrcmp(TEXT("-u"), szArgument[1]) == 0)
 	{
 		InitializeCBIRDatabase();
@@ -42,6 +47,11 @@ void HandleArguments(PTSTR *szArgument, int nArgumentCount)
 
 		PerformCBIRSearch(szArgument[2], method);
 	}
+
+#ifdef OUTPUT_FOR_DEBUG
+	ULONGLONG endTicks = GetTickCount64();
+	cout << "The program took " << (endTicks - startTicks) << " milliseconds." << endl;
+#endif
 }
 
 void ShowArgumentHelp()

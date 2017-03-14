@@ -22,7 +22,7 @@ typedef struct updateThreadData
 {
 	size_t id;
 
-	StringVector *filelist;
+	StringVector *fileList;
 
 	size_t start;
 	size_t end;
@@ -34,7 +34,8 @@ typedef struct searchThreadData
 {
 	size_t id;
 
-	StringVector *filelist;
+	wstring *imageFileList;
+	StringVector *featureFileList;
 
 	size_t start;
 	size_t end;
